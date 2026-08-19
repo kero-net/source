@@ -1,0 +1,9 @@
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: ["**/*.md"]
+github-actions:
+  - changed-files:
+      - any-glob-to-any-file: [".github/workflows/**", ".github/actions/**", ".github/scripts/**"]
+security:
+  - changed-files:
+      - any-glob-to-any-file: ["SECURITY.md", ".github/workflows/dependency-review.yml", ".github/workflows/codeql.yml"]

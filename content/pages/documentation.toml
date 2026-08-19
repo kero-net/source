@@ -1,0 +1,11 @@
+[overview.title.values]
+en-US = "SCOPE Documentation"
+ja-JP = "SCOPE ドキュメント"
+
+[overview.introduction.values]
+en-US = "This documentation defines SCOPE's authorization, verification, capability, and Linux enforcement contracts."
+ja-JP = "このドキュメントでは、SCOPE の認可、検証、実行能力、Linux 強制適用の契約を定義します。"
+
+[navigation.getting_started.values]
+en-US = "Getting Started"
+ja-JP = "はじめに"

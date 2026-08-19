@@ -1,0 +1,44 @@
+name: CodeQL
+
+on:
+  workflow_dispatch:
+    inputs:
+      language:
+        description: Language to analyze.
+        required: true
+        type: choice
+        options:
+          - rust
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze ${{ inputs.language }}
+    runs-on: ${{ inputs.language == 'swift' && 'macos-latest' || 'ubuntu-latest' }}
+    permissions:
+      security-events: write
+      packages: read
+    steps:
+      - name: Require source workflow ref
+        shell: bash
+        run: |
+          if [ "$GITHUB_REF_NAME" != "source" ]; then
+            echo "CodeQL must be dispatched from source, got $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: source
+          persist-credentials: false
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
+        with:
+          languages: ${{ inputs.language }}
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
+      - name: Analyze
+        uses: github/codeql-action/analyze@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6

@@ -1,0 +1,364 @@
+[hero.tagline.values]
+en-US = "Linux-first authorization and bounded enforcement, built in Rust."
+ja-JP = "Rust で構築された、Linux 向けの認可と境界付き強制適用。"
+
+[navigation.features.values]
+en-US = "Features"
+ja-JP = "機能"
+[navigation.status.values]
+en-US = "Status"
+ja-JP = "状態"
+[navigation.quick_start.values]
+en-US = "Quick Start"
+ja-JP = "クイックスタート"
+[navigation.policy_model.values]
+en-US = "Global + Project Policy"
+ja-JP = "グローバル＋プロジェクトポリシー"
+[navigation.development.values]
+en-US = "Development"
+ja-JP = "開発"
+[navigation.project.values]
+en-US = "Project"
+ja-JP = "プロジェクト"
+[navigation.languages.values]
+en-US = '''<table><tr><td align="center"><a href="README.md">English</a></td><td align="center"><a href="README.ja-JP.md">日本語</a></td></tr></table>'''
+ja-JP = '''<table><tr><td align="center"><a href="README.md">English</a></td><td align="center"><a href="README.ja-JP.md">日本語</a></td></tr></table>'''
+
+[sections.features.title.values]
+en-US = "Features"
+ja-JP = "機能"
+[sections.features.body.values]
+en-US = '''
+- Keeps authorization, artifact verification, runtime capability, enforcement, and execution as separate results.
+- Verifies immutable and replayable Layer 2 decision artifacts without re-deciding policy.
+- Targets explicit Linux enforcement boundaries with auditable threat models.
+- Uses a low-overhead Rust backend; optional web tooling remains outside the trusted enforcement core.'''
+ja-JP = '''
+- 認可、成果物検証、実行能力、強制適用、実行結果を別々に扱います。
+- ポリシーを再判断せず、不変で再現可能な Layer 2 判断成果物を検証します。
+- 監査可能な脅威モデルを備えた明示的な Linux 強制境界を対象とします。
+- 低負荷な Rust バックエンドを使用し、任意の Web ツールを信頼された強制適用コアから分離します。'''
+
+[sections.quick_start.title.values]
+en-US = "Quick Start"
+ja-JP = "クイックスタート"
+[sections.quick_start.body.values]
+en-US = '''
+### 1. Build the current CLI
+
+SCOPE currently targets Linux. Windows binaries and Flatpak packaging are
+planned for later; build from source on Ubuntu, Debian, or Arch for now.
+
+Install Rust and the native build tools first:
+
+```bash
+# Ubuntu or Debian
+sudo apt update
+sudo apt install build-essential curl
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Arch
+sudo pacman -S --needed base-devel rust
+```
+
+Run the Rust commands from the repository's `src/` directory:
+
+```bash
+cd src
+cargo build --release --locked
+/usr/bin/install -Dm755 target/release/scope "$HOME/.local/bin/scope"
+scope --version
+```
+
+Ensure `$HOME/.local/bin` is on `PATH`. On Fish, use the absolute
+`/usr/bin/install`: some systems define `install` as a package-manager
+function, which does not install files.
+
+Choose the global SCOPE environment once. `$HOME/.scope` is the normal default;
+use `--root` when the data belongs elsewhere:
+
+```bash
+scope global init
+# This installation instead uses:
+scope global init --root /mnt/data/documents/.scope
+scope global path
+scope knowledge path global --plain
+```
+
+The selected location is recorded in the machine-local XDG configuration and
+is never committed into repositories. Then initialize a repository:
+
+```bash
+cd /path/to/repository
+scope init
+```
+
+SCOPE creates only one top-level integration directory:
+
+```text
+.scope/
+├── .gitignore
+├── scope.toml
+├── knowledge.toml
+├── knowledge/
+│   ├── shared/
+│   └── local/             # ignored
+├── policy/
+│   ├── environment.toml
+│   └── records.toml
+├── checklists/
+├── tests/
+└── state/                 # local runtime evidence; ignored
+```
+
+### 2. Define a minimal standalone policy
+
+The generated environment treats `.scope/policy/records.toml` as this repository's origin policy. Add a principal, role, statement, and assignment:
+
+```toml
+schema = "terminal-policy/records/v1"
+source = "source.project"
+
+[[principals]]
+id = "principal.local-user"
+
+[[roles]]
+id = "role.contributor"
+
+[[statements]]
+id = "statement.allow-source-write"
+role = "role.contributor"
+effect = "allow"
+operations = ["filesystem.write"]
+scopes = ["path:src/**"]
+
+[[assignments]]
+id = "assignment.local-user.contributor"
+principal = "principal.local-user"
+roles = ["role.contributor"]
+operations = ["filesystem.write"]
+scopes = ["path:src/**"]
+```
+
+Create `.scope/tests/write-source.toml`:
+
+```toml
+schema = "terminal-policy/request/v1"
+request_id = "request.write-source"
+principal = "principal.local-user"
+operation = "filesystem.write"
+targets = ["path:src/main.rs"]
+
+[session]
+id = "session.local"
+client = "scope-cli"
+```
+
+Resolve it using the `.scope/` defaults:
+
+```bash
+scope policy authorize --request .scope/tests/write-source.toml
+```
+
+The command returns a pure `ALLOW` or `DENY` result and stores its immutable snapshot under `.scope/state/policy-snapshots/`. To prove the result no longer depends on mutable TOML, use the snapshot path and digest returned by that result:
+
+```bash
+scope policy replay \
+  --snapshot .scope/state/policy-snapshots/SNAPSHOT.json \
+  --digest sha256:DIGEST \
+  --request .scope/tests/write-source.toml
+```'''
+ja-JP = '''
+### 1. 現在の CLI をビルドする
+
+```bash
+cd src
+cargo build --release --locked
+/usr/bin/install -Dm755 target/release/scope "$HOME/.local/bin/scope"
+```
+
+`$HOME/.local/bin` が `PATH` に含まれていることを確認します。
+
+最初にグローバル SCOPE 環境を選択します。通常の既定値は `$HOME/.scope`
+です。別の場所に保存する場合は `--root` を使います。
+
+```bash
+scope global init
+# この環境では代わりに次を使用します。
+scope global init --root /mnt/data/documents/.scope
+scope global path
+scope knowledge path global --plain
+```
+
+選択した場所はマシンローカルの XDG 設定に記録され、リポジトリには
+コミットされません。その後、リポジトリを初期化します。
+
+```bash
+cd /path/to/repository
+scope init
+```
+
+SCOPE が作成するトップレベルの統合ディレクトリは一つだけです。
+
+```text
+.scope/
+├── .gitignore
+├── scope.toml
+├── knowledge.toml
+├── knowledge/
+│   ├── shared/
+│   └── local/             # 無視される
+├── policy/
+│   ├── environment.toml
+│   └── records.toml
+├── checklists/
+├── tests/
+└── state/                 # ローカル実行時証拠（無視される）
+```
+
+### 2. 最小のスタンドアロンポリシーを定義する
+
+生成された環境では `.scope/policy/records.toml` をこのリポジトリの origin ポリシーとして扱います。principal、role、statement、assignment を追加します。
+
+```toml
+schema = "terminal-policy/records/v1"
+source = "source.project"
+
+[[principals]]
+id = "principal.local-user"
+
+[[roles]]
+id = "role.contributor"
+
+[[statements]]
+id = "statement.allow-source-write"
+role = "role.contributor"
+effect = "allow"
+operations = ["filesystem.write"]
+scopes = ["path:src/**"]
+
+[[assignments]]
+id = "assignment.local-user.contributor"
+principal = "principal.local-user"
+roles = ["role.contributor"]
+operations = ["filesystem.write"]
+scopes = ["path:src/**"]
+```
+
+`.scope/tests/write-source.toml` を作成します。
+
+```toml
+schema = "terminal-policy/request/v1"
+request_id = "request.write-source"
+principal = "principal.local-user"
+operation = "filesystem.write"
+targets = ["path:src/main.rs"]
+
+[session]
+id = "session.local"
+client = "scope-cli"
+```
+
+`.scope/` の既定値を使って解決します。
+
+```bash
+scope policy authorize --request .scope/tests/write-source.toml
+```
+
+コマンドは純粋な `ALLOW` または `DENY` を返し、不変スナップショットを `.scope/state/policy-snapshots/` に保存します。結果が変更可能な TOML に依存しないことを確認するには、返されたスナップショットパスと digest を使います。
+
+```bash
+scope policy replay \
+  --snapshot .scope/state/policy-snapshots/SNAPSHOT.json \
+  --digest sha256:DIGEST \
+  --request .scope/tests/write-source.toml
+```'''
+
+[sections.policy_model.title.values]
+en-US = "Shared Global and Project-Specific Policy"
+ja-JP = "共有グローバルポリシーとプロジェクト固有ポリシー"
+[sections.policy_model.body.values]
+en-US = '''
+SCOPE does not merge files merely because one is called “global” and another is inside a repository. Authority comes from policy-source records in one environment:
+
+```text
+global origin source
+    ├── defines principals and shared roles
+    ├── issues shared allow/deny statements
+    └── may delegate a bounded envelope
+             ↓
+project source
+    ├── may always narrow through authorized restrictions
+    └── may grant only inside an explicit delegation
+```
+
+An applicable explicit deny dominates applicable allows. A narrower allow never silently defeats a broader deny. Missing authority defaults to `DENY`; a role named `root` has no intrinsic shortcut; and session/client fields cannot manufacture roles.
+
+Global records live under the user-selected global SCOPE environment, while project records remain under `.scope/policy/`. The environment must declare both source IDs and their trust modes. The current CLI does not implicitly load a source's `locator`; resolve the configured global path and pass every record file explicitly:
+
+```bash
+global_scope="$(scope global path --plain)"
+scope policy authorize \
+  --environment .scope/policy/environment.toml \
+  --records "$global_scope/policy/records.toml" \
+  --records .scope/policy/records.toml \
+  --request .scope/tests/write-source.toml
+```
+
+Use `origin` for the initial trusted authority. Use `delegated` for project records that may act only inside a delegation issued by another source. `restrictive` is reserved for policy that can narrow inherited authority without granting new authority. The current Rust port supports origin policy and bounded first-hop delegation; full restrictive-source and multi-hop delegation parity is still in progress.'''
+ja-JP = '''
+SCOPE は、ファイル名が「global」であることやリポジトリ内にあることだけを理由にポリシーを統合しません。権限は、一つの環境に定義された policy source レコードから生じます。
+
+```text
+グローバル origin source
+    ├── principal と共有 role を定義
+    ├── 共有 allow/deny statement を発行
+    └── 制限された範囲を委任可能
+             ↓
+プロジェクト source
+    ├── 認可された制限によって権限を縮小可能
+    └── 明示的な委任の範囲内でのみ grant 可能
+```
+
+適用可能な明示的 deny は適用可能な allow より優先されます。狭い allow が広い deny を暗黙に上書きすることはありません。権限がなければ既定で `DENY` となり、`root` という role 名に特別な権限はなく、session/client フィールドから role を作ることもできません。
+
+グローバルレコードはユーザーが選択したグローバル SCOPE 環境に置き、プロジェクトレコードは `.scope/policy/` に置きます。environment は両方の source ID と trust mode を宣言する必要があります。現在の CLI は source の `locator` を暗黙に読み込まないため、設定済みのグローバルパスを解決し、すべてのレコードファイルを明示的に渡します。
+
+```bash
+global_scope="$(scope global path --plain)"
+scope policy authorize \
+  --environment .scope/policy/environment.toml \
+  --records "$global_scope/policy/records.toml" \
+  --records .scope/policy/records.toml \
+  --request .scope/tests/write-source.toml
+```
+
+最初の信頼された権限には `origin` を使います。別の source が発行した委任範囲内でのみ動作するプロジェクトレコードには `delegated` を使います。`restrictive` は新しい権限を与えず継承権限を狭めるポリシー用です。現在の Rust 移植は origin ポリシーと制限付き一段階委任に対応しています。restrictive source と多段階委任の完全な互換性はまだ作業中です。'''
+
+[sections.status.title.values]
+en-US = "Status"
+ja-JP = "状態"
+[sections.status.body.values]
+en-US = "SCOPE is pre-release security software. An `ENFORCED` result applies only to its named boundary and threat model."
+ja-JP = "SCOPE はプレリリース段階のセキュリティソフトウェアです。`ENFORCED` は指定された境界と脅威モデルにのみ適用されます。"
+
+[sections.development.title.values]
+en-US = "Development"
+ja-JP = "開発"
+[sections.development.body.values]
+en-US = '''Run `scope init` in a consumer repository to create its single `.scope/` integration directory. Canonical SCOPE development happens on `source`; run `cd src && cargo test --all-targets` for product tests. See [`CONTRIBUTING.md`](../CONTRIBUTING.md) for the full validation workflow.'''
+ja-JP = '''利用するリポジトリで `scope init` を実行すると、単一の `.scope/` 統合ディレクトリが作成されます。SCOPE の正規開発は `source` で行い、製品テストは `cd src && cargo test --all-targets` で実行します。完全な検証手順は [`CONTRIBUTING.md`](../CONTRIBUTING.md) を参照してください。'''
+
+[sections.project.title.values]
+en-US = "Project"
+ja-JP = "プロジェクト"
+[sections.project.body.values]
+en-US = "The `source` branch is canonical. Automation owns generated `canary`, `beta`, and `stable` publication branches."
+ja-JP = "`source` ブランチが正規です。生成される `canary`、`beta`、`stable` 公開ブランチは自動化によって管理されます。"
+
+[sections.license.title.values]
+en-US = "License"
+ja-JP = "ライセンス"
+[sections.license.body.values]
+en-US = "Licensed under the [ISC License](../LICENSE)."
+ja-JP = "[ISC License](../LICENSE) の下で提供されます。"

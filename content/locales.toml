@@ -1,0 +1,9 @@
+[locales."en-US"]
+name = "English (United States)"
+published = true
+fallback = []
+
+[locales."ja-JP"]
+name = "日本語"
+published = true
+fallback = ["en-US"]

@@ -1,0 +1,198 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "CI: Run Validation Workflow (act)",
+      "detail": "Runs .github/workflows/validate.yml locally; requires act.",
+      "type": "process",
+      "command": "act",
+      "args": [
+        "push",
+        "--workflows",
+        ".github/workflows/validate.yml"
+      ],
+      "problemMatcher": [],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Check: Repository Contracts",
+      "detail": "Checks repository layout, metadata, publication rules, and forbidden residue.",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        ".github/scripts/validate-repository.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Test: Localization Rendering",
+      "detail": "Tests localized page and README rendering.",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        ".github/scripts/test-localization.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Test: Publication Payload",
+      "detail": "Tests generated publication payload selection and safety rules.",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        ".github/scripts/test-publication.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Test: Publication Manifests",
+      "detail": "Tests channel manifest validation and source-commit binding.",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        ".github/scripts/test-publication-manifests.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Check: Shell Scripts",
+      "detail": "Runs bash syntax checks on repository shell scripts.",
+      "type": "shell",
+      "command": "bash -n .github/scripts/publish-generated-branch.sh && bash -n .github/scripts/run-actionlint.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Check: GitHub Actions",
+      "detail": "Runs actionlint against GitHub Actions workflows.",
+      "type": "process",
+      "command": "bash",
+      "args": [
+        ".github/scripts/run-actionlint.sh"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Test: Rust",
+      "detail": "Runs all Rust tests with the locked dependency graph.",
+      "type": "process",
+      "command": "cargo",
+      "args": [
+        "test",
+        "--all-targets",
+        "--manifest-path",
+        "src/Cargo.toml",
+        "--locked"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "Build: Documentation Site",
+      "detail": "Renders localization and builds the strict MkDocs site.",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        ".github/scripts/build-docs.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "Publish: Run Local Workflow (act)",
+      "detail": "Runs the publication workflow locally; requires act and a release version.",
+      "type": "process",
+      "command": "act",
+      "args": [
+        "workflow_dispatch",
+        "--workflows",
+        ".github/workflows/publish.yml",
+        "--job",
+        "publish",
+        "--input",
+        "channel=stable",
+        "--input",
+        "version=2026.08.2-hotfix"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "Setup: Refresh Python Dependencies",
+      "detail": "Installs or updates .github/automation-requirements.txt.",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "-m",
+        "pip",
+        "install",
+        "--upgrade",
+        "--requirement",
+        ".github/automation-requirements.txt"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Setup: Refresh Actionlint",
+      "detail": "Downloads the pinned actionlint binary into .generated/.cache.",
+      "type": "process",
+      "command": "bash",
+      "args": [
+        ".github/scripts/run-actionlint.sh",
+        "--refresh"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Setup: Refresh All Local Tooling",
+      "detail": "Runs the Python dependency and actionlint refresh tasks in sequence.",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Setup: Refresh Python Dependencies",
+        "Setup: Refresh Actionlint"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}

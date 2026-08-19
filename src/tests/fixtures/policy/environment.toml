@@ -1,0 +1,19 @@
+schema = "terminal-policy/environment/v1"
+environment_id = "environment.example"
+context_providers = ["branch", "project", "time"]
+
+[[sources]]
+id = "source.example"
+kind = "global-policy"
+locator = "records.toml"
+trust_mode = "origin"
+record_actions = [
+  "principal.define",
+  "role.define",
+  "role.assign",
+  "statement.allow",
+  "statement.deny",
+  "delegation.issue",
+]
+operations = ["*"]
+scope_universe = ["path", "repository"]

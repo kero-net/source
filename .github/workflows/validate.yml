@@ -1,0 +1,99 @@
+name: Validate
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [source]
+  push:
+    branches: [source]
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  repository:
+    name: Repository Contracts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require source context
+        shell: bash
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            actual_ref="$GITHUB_BASE_REF"
+          else
+            actual_ref="$GITHUB_REF_NAME"
+          fi
+          if [ "$actual_ref" != "source" ]; then
+            echo "Validate requires source or a pull request into source, got $actual_ref" >&2
+            exit 1
+          fi
+
+      - name: Checkout validated ref
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: .github/automation-requirements.txt
+      - name: Install automation dependencies
+        run: python -m pip install --requirement .github/automation-requirements.txt
+      - name: Validate repository contracts
+        run: python .github/scripts/validate-repository.py
+      - name: Validate shell tooling
+        run: |
+          bash -n .github/scripts/publish-generated-branch.sh
+          bash -n .github/scripts/run-actionlint.sh
+      - name: Validate GitHub Actions syntax
+        run: bash .github/scripts/run-actionlint.sh
+      - name: Format Rust
+        working-directory: src
+        run: cargo fmt --all --check
+      - name: Lint Rust
+        working-directory: src
+        run: cargo clippy --all-targets --all-features -- -D warnings
+      - name: Test Rust
+        working-directory: src
+        run: cargo test --all-targets --locked
+      - name: Build release binary
+        working-directory: src
+        run: cargo build --release --locked
+      - name: Test publication boundaries
+        run: |
+          python .github/scripts/test-localization.py
+          python .github/scripts/test-publication.py
+          python .github/scripts/test-publication-manifests.py
+      - name: Build public documentation
+        run: python .github/scripts/build-docs.py
+
+  links:
+    name: Documentation Links
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require source context
+        shell: bash
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            actual_ref="$GITHUB_BASE_REF"
+          else
+            actual_ref="$GITHUB_REF_NAME"
+          fi
+          if [ "$actual_ref" != "source" ]; then
+            echo "Validate requires source or a pull request into source, got $actual_ref" >&2
+            exit 1
+          fi
+
+      - name: Checkout validated ref
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check links
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          args: --no-progress --accept 200,429 "CODE_OF_CONDUCT.md" "CONTRIBUTING.md" "SECURITY.md" "docs/**/*.md" ".github/**/*.md"
+          fail: true

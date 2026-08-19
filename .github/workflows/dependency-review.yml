@@ -1,0 +1,29 @@
+name: Dependency Review
+
+on:
+  pull_request:
+    branches: [source]
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    name: Review Dependency Changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Require source pull request base
+        shell: bash
+        run: |
+          if [ "$GITHUB_BASE_REF" != "source" ]; then
+            echo "Dependency Review requires a pull request into source, got $GITHUB_BASE_REF" >&2
+            exit 1
+          fi
+
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: moderate
+          deny-licenses: GPL-3.0, AGPL-3.0

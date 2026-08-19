@@ -1,0 +1,33 @@
+schema = "terminal-policy/records/v1"
+source = "source.example"
+
+[[principals]]
+id = "principal.example"
+display_name = "Example principal"
+
+[[roles]]
+id = "role.example.contributor"
+
+[[statements]]
+id = "statement.example.source-write"
+role = "role.example.contributor"
+effect = "allow"
+operations = ["filesystem.write"]
+scopes = ["path:src/**", "path:tests/**"]
+
+[[statements]]
+id = "statement.example.protect-main"
+role = "role.example.contributor"
+effect = "deny"
+operations = ["filesystem.write"]
+scopes = ["path:**"]
+conditions = [
+  { provider = "branch", key = "name", operator = "eq", value = "main" },
+]
+
+[[assignments]]
+id = "assignment.example.contributor"
+principal = "principal.example"
+roles = ["role.example.contributor"]
+operations = ["filesystem.write"]
+scopes = ["path:**"]

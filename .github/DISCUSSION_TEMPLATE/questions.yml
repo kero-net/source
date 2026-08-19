@@ -1,0 +1,13 @@
+title: "[Question] "
+labels: [q-and-a]
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context and question
+    validations:
+      required: true
+  - type: textarea
+    id: attempts
+    attributes:
+      label: What have you tried?

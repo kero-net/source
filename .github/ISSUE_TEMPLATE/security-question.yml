@@ -1,0 +1,21 @@
+name: Security question
+description: Ask a non-sensitive question about supported security practices.
+title: "[Security question]: "
+labels: [security, question]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include suspected vulnerabilities, exploits, secrets, or private data. Report those privately through the Security tab.
+  - type: textarea
+    id: question
+    attributes:
+      label: Non-sensitive question
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: This is not a vulnerability report and contains no sensitive details.
+          required: true

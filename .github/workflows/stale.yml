@@ -1,0 +1,37 @@
+name: Stale Discussions and Issues
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "37 7 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Require source for manual runs
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          if [ "$GITHUB_REF_NAME" != "source" ]; then
+            echo "Manual stale processing must be dispatched from source, got $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+
+      - name: Mark inactive work
+        uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v11.0.0
+        with:
+          days-before-stale: 60
+          days-before-close: 14
+          exempt-issue-labels: pinned,security,roadmap
+          exempt-pr-labels: pinned,security,release
+          stale-issue-message: This issue has been inactive for 60 days. Add current evidence or context to keep it open.
+          close-issue-message: Closing after the stale review window. It can be reopened when new evidence is available.
+          stale-pr-message: This pull request has been inactive for 60 days. Rebase and add current validation when work resumes.
+          close-pr-message: Closing after the stale review window. Open a new pull request from current `source` when work resumes.

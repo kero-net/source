@@ -1,0 +1,30 @@
+name: Regression report
+description: Report behavior that worked in an earlier version.
+title: "[Regression]: "
+labels: [bug, regression, triage]
+body:
+  - type: input
+    id: last_working
+    attributes:
+      label: Last working version
+    validations:
+      required: true
+  - type: input
+    id: first_broken
+    attributes:
+      label: First broken version
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction and observed difference
+    validations:
+      required: true
+  - type: checkboxes
+    id: security
+    attributes:
+      label: Security check
+      options:
+        - label: This report contains no private vulnerability details.
+          required: true

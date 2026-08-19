@@ -1,0 +1,28 @@
+version = 1
+
+[environment]
+contexts = ["domain:tools"]
+baseline = ["knowledge.global-docs"]
+
+[project]
+shared_root = "knowledge/shared"
+local_root = "knowledge/local"
+generated_root = "state/generated"
+contexts = ["domain:tools"]
+
+[[documents]]
+path = "knowledge/shared/architecture/README.md"
+id = "scope.architecture"
+scope = ["project:scope"]
+
+[[documents]]
+path = "knowledge/shared/architecture/parity.md"
+id = "scope.parity"
+scope = ["project:scope"]
+inherits = ["scope.architecture"]
+
+[[documents]]
+path = "knowledge/shared/architecture/repository.md"
+id = "scope.repository-architecture"
+scope = ["project:scope"]
+inherits = ["scope.architecture"]

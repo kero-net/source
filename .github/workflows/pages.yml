@@ -1,0 +1,165 @@
+name: Pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [source]
+    paths:
+      - ".github/TRANSLATORS.md"
+      - "content/locales.toml"
+      - "content/pages/**"
+      - ".github/mkdocs.yml"
+      - ".github/automation-requirements.txt"
+      - ".github/scripts/build-docs.py"
+      - ".github/scripts/render-localization.py"
+      - ".github/scripts/collect-publication-manifests.py"
+      - ".github/workflows/pages.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Pages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require source workflow ref
+        shell: bash
+        run: |
+          if [ "$GITHUB_REF_NAME" != "source" ]; then
+            echo "Pages must run from source, got $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+
+      - name: Checkout source tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: source
+          path: source
+          fetch-depth: 0
+          fetch-tags: false
+          persist-credentials: false
+
+      - name: Fetch publication metadata
+        shell: bash
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          remote_url="https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          for branch in stable beta canary; do
+            path="publication-$branch"
+            mkdir -p "$path"
+            if ! git ls-remote --exit-code --heads "$remote_url" "$branch" >/dev/null 2>&1; then
+              echo "No generated $branch branch; skipping its publication metadata."
+              continue
+            fi
+            git -C "$path" init
+            git -C "$path" remote add origin "$remote_url"
+            git -C "$path" fetch --depth=1 --no-tags origin "refs/heads/$branch"
+            git -C "$path" checkout --detach FETCH_HEAD
+          done
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: source/.github/automation-requirements.txt
+
+      - name: Install documentation dependencies
+        run: python -m pip install --requirement source/.github/automation-requirements.txt
+
+      - name: Collect publication manifests
+        id: manifests
+        shell: bash
+        run: |
+          python source/.github/scripts/collect-publication-manifests.py \
+            --stable-manifest publication-stable/.github/publication.json \
+            --beta-manifest publication-beta/.github/publication.json \
+            --canary-manifest publication-canary/.github/publication.json \
+            --output source/.generated/publications.json \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Checkout stable documentation source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.manifests.outputs.stable_source_commit || 'source' }}
+          path: docs-stable
+          fetch-depth: 0
+          fetch-tags: false
+          persist-credentials: false
+
+      - name: Checkout beta documentation source
+        if: steps.manifests.outputs.beta_source_commit != ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.manifests.outputs.beta_source_commit }}
+          path: docs-beta
+          fetch-depth: 0
+          fetch-tags: false
+          persist-credentials: false
+
+      - name: Build stable documentation
+        working-directory: docs-stable
+        run: python .github/scripts/build-docs.py
+
+      - name: Build beta documentation
+        if: steps.manifests.outputs.beta_source_commit != ''
+        working-directory: docs-beta
+        run: python .github/scripts/build-docs.py
+
+      - name: Assemble beta site
+        if: steps.manifests.outputs.beta_source_commit != ''
+        shell: bash
+        run: |
+          mkdir -p docs-stable/.generated/site/beta
+          cp -R docs-beta/.generated/site/. docs-stable/.generated/site/beta/
+
+      - name: Checkout canary documentation source
+        if: steps.manifests.outputs.canary_source_commit != ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.manifests.outputs.canary_source_commit }}
+          path: docs-canary
+          fetch-depth: 0
+          fetch-tags: false
+          persist-credentials: false
+
+      - name: Build canary documentation
+        if: steps.manifests.outputs.canary_source_commit != ''
+        working-directory: docs-canary
+        run: python .github/scripts/build-docs.py
+
+      - name: Assemble canary site
+        if: steps.manifests.outputs.canary_source_commit != ''
+        shell: bash
+        run: |
+          mkdir -p docs-stable/.generated/site/canary
+          cp -R docs-canary/.generated/site/. docs-stable/.generated/site/canary/
+
+      - name: Configure Pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: docs-stable/.generated/site
+
+  deploy:
+    name: Deploy Pages
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0

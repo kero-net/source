@@ -1,0 +1,24 @@
+name: Performance report
+description: Report a measured performance problem.
+title: "[Performance]: "
+labels: [performance, triage]
+body:
+  - type: textarea
+    id: workload
+    attributes:
+      label: Workload and environment
+    validations:
+      required: true
+  - type: textarea
+    id: measurements
+    attributes:
+      label: Measurements
+      description: Include reproducible before/after data or a benchmark.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: User impact
+    validations:
+      required: true

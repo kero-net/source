@@ -1,0 +1,18 @@
+schema = "terminal-policy/request/v1"
+request_id = "request.example"
+principal = "principal.example"
+operation = "filesystem.write"
+targets = ["path:src/main.rs"]
+
+[session]
+id = "session.example"
+client = "example-client"
+task = "Demonstrate pure authorization"
+requested_scopes = ["path:src/**"]
+
+[[context]]
+provider = "branch"
+key = "name"
+value = "feature/example"
+provenance = "example.branch-provider/v1"
+digest = "sha256:example"

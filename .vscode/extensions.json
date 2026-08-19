@@ -1,0 +1,7 @@
+{
+  "recommendations": [
+    "GitHub.vscode-pull-request-github",
+    "ms-python.python",
+    "rust-lang.rust-analyzer"
+  ]
+}

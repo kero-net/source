@@ -1,0 +1,57 @@
+# SCOPE publishes sanitized Linux-first CLI payloads from canonical source.
+enabled: true
+
+include:
+  - .gitattributes
+  - .gitignore
+  - .vscode
+  - CODE_OF_CONDUCT.md
+  - CITATION.cff
+  - CONTRIBUTING.md
+  - LICENSE
+  - SECURITY.md
+  - content/assets
+  - src
+
+channel_include:
+  canary: []
+  beta: []
+  stable:
+    - .github/DISCUSSION_TEMPLATE
+    - .github/ISSUE_TEMPLATE
+    - .github/PULL_REQUEST_TEMPLATE
+    - .github/workflows/pages.yml
+    - .github/workflows/codeql.yml
+    - .github/workflows/greetings.yml
+    - .github/workflows/labeler.yml
+    - .github/workflows/stale.yml
+    - .github/workflows/visit-counter.yml
+    - .github/FUNDING.yml
+    - .github/labeler.yml
+    - .github/workflows/publish.yml
+    - .github/workflows/validate.yml
+    - .github/SUPPORT.md
+    - .github/dependabot.yml
+    - .github/release.yml
+
+required:
+  - .vscode/launch.json
+  - .vscode/tasks.json
+  - CODE_OF_CONDUCT.md
+  - CONTRIBUTING.md
+  - LICENSE
+  - SECURITY.md
+  - docs/README.md
+  - src/Cargo.toml
+  - src/Cargo.lock
+  - src/rust/main.rs
+
+exclude:
+  - .git
+  - .generated
+  - .agents
+  - .workspace
+  - .venv
+  - AGENTS.md
+  - site
+  - src/target
