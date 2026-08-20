@@ -2,10 +2,10 @@ use super::authority::{RecordRef, operation_matches, source_authority};
 use super::model::*;
 use super::scope::scope_set_match;
 use super::snapshot::{SnapshotError, write_snapshot};
+use chrono::DateTime;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use thiserror::Error;
-use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 
 #[derive(Debug, Error)]
 pub enum AuthorizationError {
@@ -101,15 +101,15 @@ fn validity_state(
     }
     let Some(now) = context(request, "time", "now")
         .and_then(|item| item.value.as_str())
-        .and_then(|value| OffsetDateTime::parse(value, &Rfc3339).ok())
+        .and_then(|value| DateTime::parse_from_rfc3339(value).ok())
     else {
         return Applicability::Indeterminate;
     };
     if not_before
-        .and_then(|value| OffsetDateTime::parse(value, &Rfc3339).ok())
+        .and_then(|value| DateTime::parse_from_rfc3339(value).ok())
         .is_some_and(|start| now < start)
         || not_after
-            .and_then(|value| OffsetDateTime::parse(value, &Rfc3339).ok())
+            .and_then(|value| DateTime::parse_from_rfc3339(value).ok())
             .is_some_and(|end| now > end)
     {
         Applicability::Inapplicable
@@ -627,6 +627,34 @@ conditions = [{ provider = "branch", key = "name", operator = "eq", value = "mai
             .find(|item| item.effect == "allow")
             .unwrap();
         assert_eq!(allow.applicability, Applicability::Applicable);
+    }
+
+    #[test]
+    fn decisive_false_gate_overrides_an_indeterminate_gate() {
+        let result = fixture(
+            r#"
+[[statements]]
+id = "statement.deny-read-on-main"
+role = "role.contributor"
+effect = "deny"
+operations = ["filesystem.read"]
+scopes = ["path:src/**"]
+conditions = [{ provider = "branch", key = "name", operator = "eq", value = "main" }]
+"#,
+            "",
+        );
+        assert_eq!(
+            (result.decision.as_str(), result.reason.as_str()),
+            ("ALLOW", "allow.applicable")
+        );
+        let deny = result
+            .statements
+            .iter()
+            .find(|item| item.id == "statement.deny-read-on-main")
+            .unwrap();
+        assert_eq!(deny.applicability, Applicability::Inapplicable);
+        assert!(deny.reasons.contains(&"operation.mismatch".into()));
+        assert!(deny.reasons.contains(&"condition.indeterminate".into()));
     }
 
     #[test]

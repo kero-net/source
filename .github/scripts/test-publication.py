@@ -106,7 +106,7 @@ class PublicationBuilderTests(unittest.TestCase):
         )
         (self.source / "content" / "repo" / "shared").mkdir(parents=True)
         (self.source / "content" / "repo" / "stable").mkdir(parents=True)
-        (self.source / "content" / "repo" / "shared" / "repository.toml").write_text(
+        (self.source / "content" / "repo" / "shared" / "readme.repository.toml").write_text(
             '[title.values]\nen-US = "Published README"\nja-JP = "公開 README"\n',
             encoding="utf-8",
         )

@@ -1,6 +1,7 @@
 use crate::canonical;
 use crate::policy::{AuthorizationRequest, PureAuthorizationResult};
 use crate::result::Authorization;
+use chrono::{DateTime, Duration, SecondsFormat, Utc};
 use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -8,7 +9,6 @@ use sha2::Sha256;
 use std::fs;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
-use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -69,6 +69,19 @@ pub struct ArtifactVerifier {
     snapshot_path: PathBuf,
 }
 
+/// The native boundary's expected identity and operation binding. This is
+/// supplied by broker-owned configuration, never by a caller-provided
+/// artifact field alone.
+#[derive(Clone, Debug)]
+pub struct ArtifactBinding {
+    pub principal: String,
+    pub session_id: String,
+    pub targets: Vec<String>,
+    pub trusted_context_digest: String,
+    pub execution_binding: Value,
+    pub boundary_generation: Option<u64>,
+}
+
 #[derive(Clone, Debug)]
 pub struct VerifiedArtifact {
     artifact: AuthorizationArtifact,
@@ -77,7 +90,7 @@ pub struct VerifiedArtifact {
 #[derive(Clone, Debug)]
 pub struct ArtifactIssueOptions {
     pub ttl_seconds: u64,
-    pub now: OffsetDateTime,
+    pub now: DateTime<Utc>,
     pub audience: String,
     pub execution_binding: Value,
     pub boundary_generation: Option<u64>,
@@ -154,13 +167,13 @@ impl ArtifactVerifier {
         let bytes = fs::read(artifact_path).map_err(ArtifactError::ArtifactUnavailable)?;
         let artifact: AuthorizationArtifact =
             serde_json::from_slice(&bytes).map_err(ArtifactError::ArtifactMalformed)?;
-        self.verify(artifact, OffsetDateTime::now_utc())
+        self.verify(artifact, Utc::now())
     }
 
     pub fn verify(
         &self,
         artifact: AuthorizationArtifact,
-        now: OffsetDateTime,
+        now: DateTime<Utc>,
     ) -> Result<VerifiedArtifact, ArtifactError> {
         if artifact.schema != ARTIFACT_SCHEMA {
             return Err(ArtifactError::Schema);
@@ -205,11 +218,11 @@ impl ArtifactVerifier {
         if canonical::sha256(&snapshot) != artifact.snapshot.digest {
             return Err(ArtifactError::SnapshotDigest);
         }
-        let issued = OffsetDateTime::parse(&artifact.issued_at, &Rfc3339)
-            .map_err(|_| ArtifactError::Time)?;
-        let expires = OffsetDateTime::parse(&artifact.expires_at, &Rfc3339)
-            .map_err(|_| ArtifactError::Time)?;
-        if now < issued - time::Duration::seconds(5) {
+        let issued =
+            DateTime::parse_from_rfc3339(&artifact.issued_at).map_err(|_| ArtifactError::Time)?;
+        let expires =
+            DateTime::parse_from_rfc3339(&artifact.expires_at).map_err(|_| ArtifactError::Time)?;
+        if now < issued.with_timezone(&Utc) - Duration::seconds(5) {
             return Err(ArtifactError::NotYetValid);
         }
         if now > expires {
@@ -222,6 +235,26 @@ impl ArtifactVerifier {
             return Err(ArtifactError::ExecutionBinding);
         }
         Ok(VerifiedArtifact { artifact })
+    }
+
+    pub fn verify_bound(
+        &self,
+        artifact: AuthorizationArtifact,
+        now: DateTime<Utc>,
+        expected: &ArtifactBinding,
+    ) -> Result<VerifiedArtifact, ArtifactError> {
+        let verified = self.verify(artifact, now)?;
+        let actual = verified.artifact();
+        if actual.principal != expected.principal
+            || actual.session_id != expected.session_id
+            || actual.targets != expected.targets
+            || actual.trusted_context_digest != expected.trusted_context_digest
+            || actual.boundary_generation != expected.boundary_generation
+            || actual.execution_binding != expected.execution_binding
+        {
+            return Err(ArtifactError::ExecutionBinding);
+        }
+        Ok(verified)
     }
 }
 
@@ -296,13 +329,9 @@ pub fn issue_artifact(
             schema: decision.snapshot.schema.clone(),
             resolver_version: decision.snapshot.resolver_version.clone(),
         },
-        issued_at: options
-            .now
-            .format(&Rfc3339)
-            .map_err(|_| ArtifactError::Time)?,
-        expires_at: (options.now + time::Duration::seconds(options.ttl_seconds as i64))
-            .format(&Rfc3339)
-            .map_err(|_| ArtifactError::Time)?,
+        issued_at: options.now.to_rfc3339_opts(SecondsFormat::Secs, true),
+        expires_at: (options.now + Duration::seconds(options.ttl_seconds as i64))
+            .to_rfc3339_opts(SecondsFormat::Secs, true),
         nonce,
         replay_policy: "single-use".into(),
         audience: options.audience,
@@ -372,9 +401,7 @@ mod tests {
 
     const TEST_KEY: [u8; 32] = [0; 32];
 
-    fn fixture(
-        now: OffsetDateTime,
-    ) -> (tempfile::TempDir, ArtifactVerifier, AuthorizationArtifact) {
+    fn fixture(now: DateTime<Utc>) -> (tempfile::TempDir, ArtifactVerifier, AuthorizationArtifact) {
         let directory = tempdir().unwrap();
         let key_path = directory.path().join("key");
         fs::write(&key_path, TEST_KEY).unwrap();
@@ -408,8 +435,8 @@ mod tests {
                 schema: SNAPSHOT_SCHEMA.into(),
                 resolver_version: RESOLVER_VERSION.into(),
             },
-            issued_at: (now - time::Duration::seconds(1)).format(&Rfc3339).unwrap(),
-            expires_at: (now + time::Duration::minutes(5)).format(&Rfc3339).unwrap(),
+            issued_at: (now - Duration::seconds(1)).to_rfc3339_opts(SecondsFormat::Secs, true),
+            expires_at: (now + Duration::minutes(5)).to_rfc3339_opts(SecondsFormat::Secs, true),
             nonce: "nonce.test".into(),
             replay_policy: "single-use".into(),
             audience: "broker.workspace-write/v1".into(),
@@ -438,7 +465,7 @@ mod tests {
 
     #[test]
     fn verifies_bound_artifact_without_policy_resolution() {
-        let now = OffsetDateTime::now_utc();
+        let now = Utc::now();
         let (_directory, verifier, artifact) = fixture(now);
         let verified = verifier.verify(artifact, now).unwrap();
         assert_eq!(
@@ -449,7 +476,7 @@ mod tests {
 
     #[test]
     fn rejects_tamper_and_expiry() {
-        let now = OffsetDateTime::now_utc();
+        let now = Utc::now();
         let (_directory, verifier, mut artifact) = fixture(now);
         artifact.principal = "principal.attacker".into();
         assert!(matches!(
@@ -457,7 +484,8 @@ mod tests {
             Err(ArtifactError::Signature)
         ));
         let (_directory, verifier, mut artifact) = fixture(now);
-        artifact.expires_at = (now - time::Duration::minutes(1)).format(&Rfc3339).unwrap();
+        artifact.expires_at =
+            (now - Duration::minutes(1)).to_rfc3339_opts(SecondsFormat::Secs, true);
         let mut payload = serde_json::to_value(&artifact).unwrap();
         payload.as_object_mut().unwrap().remove("authentication");
         let mut mac = HmacSha256::new_from_slice(&TEST_KEY).unwrap();
@@ -472,7 +500,7 @@ mod tests {
 
     #[test]
     fn rejects_an_authentic_artifact_whose_layer_2_decision_is_deny() {
-        let now = OffsetDateTime::now_utc();
+        let now = Utc::now();
         let (_directory, verifier, mut artifact) = fixture(now);
         artifact.authorization.decision = Authorization::Deny;
         let mut payload = serde_json::to_value(&artifact).unwrap();
@@ -485,6 +513,31 @@ mod tests {
         assert!(matches!(
             verifier.verify(artifact, now),
             Err(ArtifactError::AuthorizationDenied)
+        ));
+    }
+
+    #[test]
+    fn verifies_the_full_broker_owned_binding() {
+        let now = Utc::now();
+        let (_directory, verifier, artifact) = fixture(now);
+        let binding = ArtifactBinding {
+            principal: "principal.test".into(),
+            session_id: "session.test".into(),
+            targets: vec!["path:src/main.rs".into()],
+            trusted_context_digest: canonical::digest(&json!([])).unwrap(),
+            execution_binding: json!({}),
+            boundary_generation: None,
+        };
+        verifier
+            .verify_bound(artifact.clone(), now, &binding)
+            .unwrap();
+        let incorrect = ArtifactBinding {
+            principal: "principal.other".into(),
+            ..binding
+        };
+        assert!(matches!(
+            verifier.verify_bound(artifact, now, &incorrect),
+            Err(ArtifactError::ExecutionBinding)
         ));
     }
 }

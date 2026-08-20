@@ -152,7 +152,7 @@ def validate_repository_boundaries() -> list[str]:
         ROOT / "content" / "assets" / "screenshots" / ".gitkeep",
         ROOT / "content" / "assets" / "media" / ".gitkeep",
         ROOT / "content" / "repo" / "shared" / "README.template.md",
-        ROOT / "content" / "repo" / "shared" / "repository.toml",
+        ROOT / "content" / "repo" / "shared" / "readme.repository.toml",
         ROOT / "content" / "repo" / "canary" / ".gitkeep",
         ROOT / "content" / "repo" / "beta" / ".gitkeep",
         ROOT / "content" / "repo" / "stable" / ".gitkeep",

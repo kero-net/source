@@ -1,0 +1,5 @@
+schema = "terminal-policy/request/v1"
+request_id = "request.validation.duplicate-target"
+principal = "principal.example"
+operation = "filesystem.write"
+targets = ["path:src/main.rs", "path:src/main.rs"]

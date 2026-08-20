@@ -141,6 +141,8 @@ def load_catalog(localization_root: Path) -> Catalog:
     ]
     for path in components:
         component = path.stem
+        if component.startswith("readme."):
+            component = component.removeprefix("readme.")
         if not COMPONENT.fullmatch(component):
             raise SystemExit(f"{path}: invalid component filename")
         component_messages = collect_messages(path, component, load_toml(path), locales, DEFAULT_LOCALE)

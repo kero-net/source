@@ -1,5 +1,7 @@
 use scope_cli::canonical;
 use scope_cli::policy::{authorize, load_policy, load_request, load_snapshot};
+use serde::Deserialize;
+use std::fs;
 use std::path::PathBuf;
 use tempfile::tempdir;
 
@@ -45,4 +47,37 @@ fn immutable_snapshot_replay_is_byte_equivalent_without_toml() {
         canonical::canonicalize(&original).unwrap(),
         canonical::canonicalize(&replayed).unwrap()
     );
+}
+
+#[derive(Deserialize)]
+struct ExpectedDecision {
+    decision: String,
+    reason: String,
+}
+
+#[test]
+fn immutable_decision_table_covers_allow_deny_and_indeterminate_precedence() {
+    let fixtures = fixtures();
+    let policy = load_policy(
+        &fixtures.join("environment.toml"),
+        &[fixtures.join("records.toml")],
+    )
+    .unwrap();
+    let decisions = fixtures.join("decisions");
+    for name in [
+        "allow",
+        "explicit-deny",
+        "indeterminate-deny",
+        "target-type-mismatch",
+    ] {
+        let request = load_request(&decisions.join(format!("{name}.request.toml"))).unwrap();
+        let expected: ExpectedDecision = serde_json::from_slice(
+            &fs::read(decisions.join(format!("{name}.result.json"))).unwrap(),
+        )
+        .unwrap();
+        let store = tempdir().unwrap();
+        let actual = authorize(&policy, &request, store.path()).unwrap();
+        assert_eq!(actual.decision, expected.decision, "fixture {name}");
+        assert_eq!(actual.reason, expected.reason, "fixture {name}");
+    }
 }

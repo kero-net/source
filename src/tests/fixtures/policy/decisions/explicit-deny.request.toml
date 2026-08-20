@@ -1,0 +1,15 @@
+schema = "terminal-policy/request/v1"
+request_id = "request.decision.explicit-deny"
+principal = "principal.example"
+operation = "filesystem.write"
+targets = ["path:src/main.rs"]
+
+[session]
+id = "session.decision"
+
+[[context]]
+provider = "branch"
+key = "name"
+value = "main"
+provenance = "fixture.branch/v1"
+digest = "sha256:fixture-explicit-deny"

@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand, ValueEnum};
-use scope_cli::ArtifactVerifier;
 use scope_cli::layout;
 use scope_cli::policy::{authorize, load_policy, load_request, load_snapshot};
+use scope_cli::{ArtifactVerifier, WorkspaceWriteBroker};
 use serde_json::json;
 use std::path::PathBuf;
 
@@ -60,6 +60,21 @@ enum Command {
         audience: String,
         #[arg(long)]
         operation: String,
+    },
+    /// Perform one exact artifact-bound workspace write through the Linux broker.
+    WorkspaceWrite {
+        #[arg(long)]
+        root: PathBuf,
+        #[arg(long)]
+        state: PathBuf,
+        #[arg(long)]
+        artifact: PathBuf,
+        #[arg(long)]
+        snapshot: PathBuf,
+        #[arg(long)]
+        key: PathBuf,
+        #[arg(long)]
+        content: PathBuf,
     },
 }
 
@@ -198,6 +213,36 @@ fn main() {
                 1
             }
         },
+        Command::WorkspaceWrite {
+            root,
+            state,
+            artifact,
+            snapshot,
+            key,
+            content,
+        } => {
+            let result = (|| {
+                let content = std::fs::read(content)?;
+                let verifier = ArtifactVerifier::new(
+                    scope_cli::workspace_write::BOUNDARY,
+                    "filesystem.write",
+                    key,
+                    snapshot,
+                );
+                let broker = WorkspaceWriteBroker::new(root, state)
+                    .map_err(|error| std::io::Error::other(error.to_string()))?;
+                broker
+                    .write(&verifier, &artifact, &content)
+                    .map_err(|error| std::io::Error::other(error.to_string()))
+            })();
+            match result {
+                Ok(result) => {
+                    print_json(&result);
+                    0
+                }
+                Err(error) => print_layout_error("scope/workspace-write-error/v1", &error),
+            }
+        }
     };
     if exit != 0 {
         std::process::exit(exit);

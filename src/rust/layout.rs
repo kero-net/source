@@ -295,14 +295,14 @@ fn require_identity(
             path: root,
         });
     }
-    if let Some(expected) = expected_id
-        && identity.id != expected
-    {
-        return Err(DiscoveryError::IdentityMismatch {
-            expected: expected.into(),
-            actual: identity.id,
-            path: root,
-        });
+    if let Some(expected) = expected_id {
+        if identity.id != expected {
+            return Err(DiscoveryError::IdentityMismatch {
+                expected: expected.into(),
+                actual: identity.id,
+                path: root,
+            });
+        }
     }
     Ok((root, identity))
 }

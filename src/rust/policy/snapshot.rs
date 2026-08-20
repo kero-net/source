@@ -25,6 +25,8 @@ pub enum SnapshotError {
     CanonicalMismatch,
     #[error("snapshot.immutable-collision")]
     Collision,
+    #[error("snapshot.policy-invalid: {0}")]
+    PolicyInvalid(#[from] super::load::PolicyLoadError),
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -88,6 +90,7 @@ pub fn write_snapshot(
     policy: &PolicySet,
     store: &Path,
 ) -> Result<(String, String, PathBuf), SnapshotError> {
+    super::load::validate_policy(policy)?;
     let content = snapshot_bytes(policy)?;
     let digest = canonical::sha256(&content);
     let hex = digest.strip_prefix("sha256:").expect("digest prefix");
@@ -183,6 +186,7 @@ pub fn load_snapshot(
     if snapshot_bytes(&policy)? != bytes {
         return Err(SnapshotError::CanonicalMismatch);
     }
+    super::load::validate_policy(&policy)?;
     Ok(policy)
 }
 
@@ -207,5 +211,64 @@ mod tests {
         assert_eq!(load_snapshot(&path, Some(&digest)).unwrap(), policy);
         assert!(load_snapshot(&path, Some("sha256:wrong")).is_err());
         let _ = load_request;
+    }
+
+    #[test]
+    fn invalid_policy_cannot_be_written_as_a_snapshot() {
+        let directory = tempdir().unwrap();
+        let environment = directory.path().join("environment.toml");
+        let records = directory.path().join("records.toml");
+        fs::write(&environment, crate::policy::resolve::tests::ENVIRONMENT).unwrap();
+        fs::write(&records, crate::policy::resolve::tests::RECORDS).unwrap();
+        let mut policy = load_policy(&environment, &[&records]).unwrap();
+        policy
+            .roles
+            .values_mut()
+            .next()
+            .unwrap()
+            .inherits
+            .push("role.missing".into());
+        let error = write_snapshot(&policy, &directory.path().join("snapshots")).unwrap_err();
+        assert!(error.to_string().contains("role.inherited-missing"));
+    }
+
+    #[test]
+    fn replay_rejects_noncanonical_snapshot_bytes() {
+        let directory = tempdir().unwrap();
+        let environment = directory.path().join("environment.toml");
+        let records = directory.path().join("records.toml");
+        fs::write(&environment, crate::policy::resolve::tests::ENVIRONMENT).unwrap();
+        fs::write(&records, crate::policy::resolve::tests::RECORDS).unwrap();
+        let policy = load_policy(&environment, &[&records]).unwrap();
+        let (_, _, path) = write_snapshot(&policy, &directory.path().join("snapshots")).unwrap();
+        let value: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        fs::write(&path, serde_json::to_vec_pretty(&value).unwrap()).unwrap();
+        assert!(matches!(
+            load_snapshot(&path, None),
+            Err(SnapshotError::CanonicalMismatch)
+        ));
+    }
+
+    #[test]
+    fn immutable_store_rejects_existing_content_at_digest_path() {
+        let directory = tempdir().unwrap();
+        let environment = directory.path().join("environment.toml");
+        let records = directory.path().join("records.toml");
+        fs::write(&environment, crate::policy::resolve::tests::ENVIRONMENT).unwrap();
+        fs::write(&records, crate::policy::resolve::tests::RECORDS).unwrap();
+        let policy = load_policy(&environment, &[&records]).unwrap();
+        let content = snapshot_bytes(&policy).unwrap();
+        let digest = canonical::sha256(&content);
+        let store = directory.path().join("snapshots");
+        fs::create_dir_all(&store).unwrap();
+        fs::write(
+            store.join(format!("{}.json", digest.strip_prefix("sha256:").unwrap())),
+            b"different immutable content",
+        )
+        .unwrap();
+        assert!(matches!(
+            write_snapshot(&policy, &store),
+            Err(SnapshotError::Collision)
+        ));
     }
 }

@@ -137,6 +137,9 @@
       "command": "act",
       "args": [
         "workflow_dispatch",
+        "--directory",
+        "${workspaceFolder}",
+        "--bind",
         "--workflows",
         ".github/workflows/publish.yml",
         "--job",
@@ -144,7 +147,7 @@
         "--input",
         "channel=stable",
         "--input",
-        "version=2026.08.2-hotfix"
+        "version=2026.08.1-regular"
       ],
       "options": {
         "cwd": "${workspaceFolder}"

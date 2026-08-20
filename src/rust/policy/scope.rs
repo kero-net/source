@@ -11,6 +11,10 @@ const TYPES: &[&str] = &[
     "service",
 ];
 
+pub(super) fn type_known(value: &str) -> bool {
+    TYPES.contains(&value)
+}
+
 #[derive(Debug, Error)]
 pub enum ScopeError {
     #[error("scope.invalid: {0}")]
@@ -79,10 +83,10 @@ pub fn scope_matches(constraint: &ScopeValue, target: &ScopeValue) -> Option<boo
         return Some(expression == target);
     }
     if constraint.kind == "path" {
-        if let Some(prefix) = expression.strip_suffix("/**")
-            && !prefix.contains('*')
-        {
-            return Some(target == prefix || target.starts_with(&format!("{prefix}/")));
+        if let Some(prefix) = expression.strip_suffix("/**") {
+            if !prefix.contains('*') {
+                return Some(target == prefix || target.starts_with(&format!("{prefix}/")));
+            }
         }
         return None;
     }
@@ -109,10 +113,10 @@ pub fn scope_contains(outer: &ScopeValue, inner: &ScopeValue) -> Option<bool> {
         if let (Some(parent), Some(child)) = (
             outer.expression.strip_suffix("/**"),
             inner.expression.strip_suffix("/**"),
-        ) && !parent.contains('*')
-            && !child.contains('*')
-        {
-            return Some(child == parent || child.starts_with(&format!("{parent}/")));
+        ) {
+            if !parent.contains('*') && !child.contains('*') {
+                return Some(child == parent || child.starts_with(&format!("{parent}/")));
+            }
         }
     } else if let (Some(parent), Some(child)) = (
         outer.expression.strip_suffix(".*"),
@@ -125,22 +129,25 @@ pub fn scope_contains(outer: &ScopeValue, inner: &ScopeValue) -> Option<bool> {
 
 pub fn scope_set_match(
     constraints: &[ScopeValue],
-    _universe: &[String],
+    universe: &[String],
     targets: &[ScopeValue],
 ) -> Option<bool> {
+    // An omitted scope set means the record is unconstrained. Once a record
+    // declares either constraints or a universe, every target type must be
+    // covered explicitly; silently ignoring a second target type could widen
+    // an authorization decision.
+    if constraints.is_empty() && universe.is_empty() {
+        return Some(true);
+    }
     let mut result = Some(true);
-    let kinds: std::collections::BTreeSet<&str> =
-        constraints.iter().map(|item| item.kind.as_str()).collect();
-    for kind in kinds {
-        let outcomes: Vec<Option<bool>> = targets
+    for target in targets {
+        if universe.contains(&target.kind) {
+            continue;
+        }
+        let outcomes: Vec<Option<bool>> = constraints
             .iter()
-            .filter(|target| target.kind == kind)
-            .flat_map(|target| {
-                constraints
-                    .iter()
-                    .filter(move |constraint| constraint.kind == kind)
-                    .map(move |constraint| scope_matches(constraint, target))
-            })
+            .filter(|constraint| constraint.kind == target.kind)
+            .map(|constraint| scope_matches(constraint, target))
             .collect();
         if outcomes.contains(&Some(true)) {
             continue;
@@ -249,6 +256,32 @@ mod tests {
                 &[parse_scope("path:docs/index.md").unwrap()]
             ),
             Some(false)
+        );
+    }
+
+    #[test]
+    fn every_request_target_must_be_covered_by_a_declared_scope() {
+        assert_eq!(
+            scope_set_match(
+                &[parse_scope("path:src/**").unwrap()],
+                &[],
+                &[
+                    parse_scope("path:src/main.rs").unwrap(),
+                    parse_scope("repository:example").unwrap(),
+                ],
+            ),
+            Some(false)
+        );
+        assert_eq!(
+            scope_set_match(
+                &[parse_scope("path:src/**").unwrap()],
+                &["repository".into()],
+                &[
+                    parse_scope("path:src/main.rs").unwrap(),
+                    parse_scope("repository:example").unwrap(),
+                ],
+            ),
+            Some(true)
         );
     }
 }

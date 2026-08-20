@@ -1,0 +1,5 @@
+schema = "terminal-policy/request/v1"
+request_id = "request.validation.wildcard-operation"
+principal = "principal.example"
+operation = "filesystem.*"
+targets = ["path:src/main.rs"]

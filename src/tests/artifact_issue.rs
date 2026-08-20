@@ -1,3 +1,4 @@
+use chrono::Utc;
 use scope_cli::policy::{authorize, load_policy, load_request};
 use scope_cli::{ArtifactIssueOptions, ArtifactVerifier, issue_artifact};
 use serde_json::json;
@@ -5,7 +6,6 @@ use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use tempfile::tempdir;
-use time::OffsetDateTime;
 
 const TEST_KEY: [u8; 32] = [0; 32];
 
@@ -28,7 +28,7 @@ fn layer_2_allow_issues_an_artifact_the_layer_3_verifier_accepts() {
     let key = directory.path().join("artifact.key");
     fs::write(&key, TEST_KEY).unwrap();
     fs::set_permissions(&key, fs::Permissions::from_mode(0o600)).unwrap();
-    let now = OffsetDateTime::now_utc();
+    let now = Utc::now();
     let artifact = issue_artifact(
         &decision,
         &request,
@@ -81,7 +81,7 @@ fn layer_2_deny_cannot_be_materialized_as_executable_authority() {
             &key,
             ArtifactIssueOptions {
                 ttl_seconds: 300,
-                now: OffsetDateTime::now_utc(),
+                now: Utc::now(),
                 audience: "broker.workspace-write/v1".into(),
                 execution_binding: json!({}),
                 boundary_generation: None,

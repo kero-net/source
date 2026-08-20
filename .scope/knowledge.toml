@@ -26,3 +26,9 @@ path = "knowledge/shared/architecture/repository.md"
 id = "scope.repository-architecture"
 scope = ["project:scope"]
 inherits = ["scope.architecture"]
+
+[[documents]]
+path = "knowledge/shared/releases/version-1.md"
+id = "scope.release.version-1"
+scope = ["project:scope"]
+inherits = ["scope.architecture", "scope.parity"]

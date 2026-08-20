@@ -11,7 +11,7 @@ text belongs in the adjacent component catalog, including the default English
 value.
 
 ```md
-## {{ l10n:repository.sections.features.title }}
+## {{ l10n:repository.features.title }}
 ```
 
 `en-US` is the fixed default. It must be registered in `content/locales.toml`
@@ -19,11 +19,13 @@ and every translation leaf must define it. The locale registry does not contain
 a schema version or configurable source-locale field.
 
 Translations live in component TOML catalogs beside the content they affect.
-The catalog filename supplies the first key segment:
+README catalogs use the explicit readme.<protocol>.toml form so the catalog
+can be paired directly with README.template.md. The protocol supplies the
+first key segment:
 
 ```text
 content/repo/shared/README.template.md
-content/repo/shared/repository.toml
+content/repo/shared/readme.repository.toml
 ```
 
 ```toml
@@ -33,9 +35,11 @@ ja-JP = "機能"
 de-DE = "Funktionen"
 ```
 
-The effective key is `repository.sections.features.title`. Lists and larger
-Markdown or HTML regions can also be a single keyed value when translating the
-region together preserves its structure and meaning.
+The effective key is repository.features.title. Templates own
+Markdown and HTML structure; catalog values should contain translatable text,
+not headings, lists, code fences, or layout markup. Split a structured region
+into multiple template keys when its display structure must remain identical
+across locales.
 
 ## Adding A Translation
 
@@ -44,8 +48,8 @@ region together preserves its structure and meaning.
 3. Open or create the component TOML beside that template.
 4. Add the translation at the existing hierarchical key without replacing the
    key in the template.
-5. Preserve Markdown, HTML, links, interpolation parameters, and intended
-   meaning.
+5. Change wording only; preserve the template's Markdown, HTML, links,
+   interpolation parameters, and display structure.
 6. Run the localization tests and the build that consumes the translated
    content.
 
