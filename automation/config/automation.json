@@ -1,5 +1,0 @@
-{
-  "$schema": "../schemas/automation.schema.json",
-  "heap": "../.heap/source",
-  "tools": { "cargo": "1", "lua": "5.4" }
-}
