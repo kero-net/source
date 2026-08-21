@@ -1,0 +1,177 @@
+.TH KERO 1 "2026-08-20" "kero 0.1.0-alpha.1" "KERO User Manual"
+.SH NAME
+kero \- controls operations, policy, and environments
+.SH SYNOPSIS
+.B kero
+.I command
+.RI [ options ]
+.SH DESCRIPTION
+.B kero
+manages KERO environments, resolves policy decisions, and provides artifact-bound Linux operation boundaries. It emits structured JSON for commands that report machine-readable results.
+.PP
+KERO has two independent environment types:
+.TP
+.B Global environment
+A user-selected, machine-local environment for shared knowledge and policy. Initialize it with
+.BR "kero init" .
+.TP
+.B Project environment
+The nearest ancestor
+.B .kero/
+directory whose
+.B kero.toml
+declares a project environment. Initialize it with
+.BR "kero project init" .
+.PP
+Global policy is not implicitly merged with project policy. When resolving a policy, pass each intended record file explicitly with
+.BR "kero policy authorize --records" .
+.SH INSTALLATION
+Install from a source checkout by passing the CLI crate directory to Cargo:
+.PP
+.EX
+cargo install --path /path/to/kero-source/code/kero-cli --locked
+.EE
+.PP
+Cargo installs the executable into
+.BR ~/.cargo/bin .
+Ensure that directory is on
+.BR PATH .
+For fish:
+.PP
+.EX
+fish_add_path ~/.cargo/bin
+.EE
+.PP
+Install this manual page into the user manual path:
+.PP
+.EX
+install -Dm644 docs/man/kero.1 ~/.local/share/man/man1/kero.1
+man kero
+.EE
+.SH COMMANDS
+.TP
+.B kero init [--root PATH] [--skip-diagnostics] [--yes]
+Run first-time global setup. In an interactive terminal, KERO checks local
+storage and asks where to create the global environment. Supplying
+.B --root
+selects a location without prompting.
+.TP
+.B kero project init [--root PATH]
+Create a project
+.B .kero/
+environment below
+.IR PATH " (default: current directory)."
+.TP
+.B kero global init [--root PATH]
+Create a global environment and save its location in the XDG KERO configuration. Without
+.BR --root ,
+the default is
+.BR ~/.kero .
+.TP
+.B kero global path [--root PATH] [--plain]
+Print the configured or explicitly supplied global environment and its identity.
+.TP
+.B kero project path [--start PATH] [--plain]
+Walk upward from
+.I PATH
+to find the nearest project environment.
+.TP
+.B kero knowledge path {global|shared|local} [--start PATH] [--plain]
+Print the selected knowledge location. The
+.B global
+area uses the global environment; the
+.B shared
+and
+.B local
+areas use the discovered project environment.
+.TP
+.B kero inspect [--start PATH]
+Report global and project environment discovery independently. This is the recommended first diagnostic command.
+.TP
+.B kero policy authorize --request PATH [--environment PATH] [--records PATH]... [--snapshot-store PATH]
+Load trusted policy records and produce an ALLOW or DENY decision plus an immutable snapshot. The default project paths are beneath
+.BR .kero/policy/
+and
+.BR .kero/state/ .
+.TP
+.B kero policy replay --snapshot PATH --digest DIGEST --request PATH
+Replay a request from an immutable policy snapshot without re-deciding policy.
+.TP
+.B kero verify-artifact OPTIONS
+Verify a signed authorization artifact. Required options are
+.BR --artifact ,
+.BR --snapshot ,
+.BR --key ,
+.BR --audience ,
+and
+.BR --operation .
+.TP
+.B kero workspace-write OPTIONS
+Perform one exact artifact-bound workspace write through the Linux broker.
+.TP
+.B kero bubblewrap OPTIONS -- ARGV...
+Run one exact no-network command through Bubblewrap.
+.TP
+.B kero git-push OPTIONS
+Push one exact non-force refspec with ambient Git credential helpers disabled.
+.TP
+.B kero https-service OPTIONS
+Invoke one exact HTTPS destination using an explicitly resolved address.
+.PP
+Run
+.B kero COMMAND --help
+for complete option details for any command.
+.SH GLOBAL DISCOVERY
+KERO finds a global environment in this order:
+.IP 1. 3
+An explicit command root.
+.IP 2. 3
+The
+.B KERO_GLOBAL_ROOT
+environment variable.
+.IP 3. 3
+The configured root in
+.BR $XDG_CONFIG_HOME/kero/config.toml ,
+or
+.BR ~/.config/kero/config.toml .
+.IP 4. 3
+The fallback directory
+.BR ~/.kero .
+.PP
+An environment must contain a compatible
+.B kero.toml
+with a
+.B kero/global
+or
+.B kero/project
+identity. Legacy Scope directories, including
+.BR .scope/ ,
+are not automatically adopted.
+.SH FILES
+.TP
+.B ~/.config/kero/config.toml
+Machine-local pointer to the selected global environment.
+.TP
+.B ~/.kero/
+Default global environment location.
+.TP
+.B .kero/
+Project-local KERO environment discovered by walking upward.
+.SH ENVIRONMENT
+.TP
+.B KERO_GLOBAL_ROOT
+Overrides configured global-environment discovery.
+.TP
+.B KERO_CONFIG_HOME
+Overrides the directory that contains
+.BR config.toml .
+.TP
+.B XDG_CONFIG_HOME
+Used when
+.B KERO_CONFIG_HOME
+is not set.
+.SH EXIT STATUS
+Zero indicates success. A nonzero status indicates invalid input, failed discovery, failed policy resolution, failed artifact verification, or a boundary failure. Error results are emitted as JSON where applicable.
+.SH SEE ALSO
+.BR cargo (1),
+.BR git (1)

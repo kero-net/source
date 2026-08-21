@@ -1,0 +1,5 @@
+schema = 1
+channels = ["canary", "beta", "stable"]
+[repository]
+template = "repository/README.template.md"
+metadata = "repository/metadata.toml"

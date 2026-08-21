@@ -1,0 +1,18 @@
+{
+  "$schema": "../schemas/repository-validation.schema.json",
+  "forbiddenText": ["Observer License"],
+  "ignoredPaths": [".git/"],
+  "requiredPaths": [
+    ".github/CODEOWNERS", "automation/run.lua", "code/Cargo.toml",
+    "code/kero-cli/tests/fixtures/policy/environment.toml",
+    "publication/channels/beta/.gitkeep", "publication/channels/canary/.gitkeep",
+    "publication/channels/stable/.gitkeep", "publication/releases/2026.08.1-regular.release.md",
+    "publication/repository/README.template.md", "publication/repository/metadata.toml",
+    "localization/locales.toml", "docs/README.md"
+  ],
+  "release": { "filenamePattern": "^(\\d{4}\\.(?:0[1-9]|1[0-2])\\.[1-9]\\d*-(?:regular|hotfix|security))\\.release\\.md$", "sections": ["Summary", "Notable Changes", "Issues Addressed", "Compatibility", "Verification"] },
+  "publication": {
+    "common": [".gitattributes", ".gitignore", "code/Cargo.lock", "code/Cargo.toml", "code/kero-cli"],
+    "stableControlPlane": [".github/dependabot.yml", ".github/labeler.yml", ".github/release.yml", ".github/workflows/codeql.yml", ".github/workflows/greetings.yml", ".github/workflows/labeler.yml", ".github/workflows/pages.yml", ".github/workflows/publish.yml", ".github/workflows/stale.yml", ".github/workflows/validate.yml", ".github/workflows/visit-counter.yml"]
+  }
+}

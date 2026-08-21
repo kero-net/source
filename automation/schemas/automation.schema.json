@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "heap", "tools"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "heap": { "const": "../.heap/source" },
+    "tools": { "type": "object", "additionalProperties": false, "required": ["cargo", "lua"], "properties": {
+      "cargo": { "type": "string", "minLength": 1 }, "lua": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" }
+    } }
+  }
+}

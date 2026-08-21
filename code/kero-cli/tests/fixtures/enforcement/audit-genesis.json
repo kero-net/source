@@ -1,0 +1,1 @@
+{"previous":"sha256:genesis","schema":"kero/audit-event/v1","lifecycle":"prepared","attempt":{"artifact_id":"artifact.fixture","boundary":"broker.fixture/v1","generation":0,"nonce":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","operation":"filesystem.write","snapshot_digest":"sha256:snapshot","target_digest":"sha256:target"}}

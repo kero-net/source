@@ -1,7 +1,8 @@
 # Security Policy
 
-SCOPE is experimental pre-release security software. No version is presently
-certified as a production security boundary.
+KERO is experimental security software distributed through canary, beta, and
+stable channels. No version is presently certified as a production security
+boundary.
 
 Do not report vulnerabilities in public issues, discussions, pull requests, or
 logs containing real policy artifacts or credentials. Use GitHub's private

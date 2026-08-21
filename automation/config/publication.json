@@ -1,0 +1,43 @@
+{
+  "$schema": "../config/schemas/publication.schema.json",
+  "enabled": true,
+  "include": [
+    ".gitattributes",
+    ".gitignore",
+    "code/Cargo.lock",
+    "code/Cargo.toml",
+    "code/kero-cli"
+  ],
+  "channelInclude": {
+    "canary": [],
+    "beta": [],
+    "stable": [
+      ".github/workflows/pages.yml",
+      ".github/workflows/codeql.yml",
+      ".github/workflows/greetings.yml",
+      ".github/workflows/labeler.yml",
+      ".github/workflows/stale.yml",
+      ".github/workflows/visit-counter.yml",
+      ".github/labeler.yml",
+      ".github/workflows/publish.yml",
+      ".github/workflows/validate.yml",
+      ".github/dependabot.yml",
+      ".github/release.yml"
+    ]
+  },
+  "required": [
+    "docs/README.md",
+    "code/Cargo.toml",
+    "code/Cargo.lock",
+    "code/kero-cli/src/main.rs"
+  ],
+  "exclude": [
+    ".git",
+    ".heap",
+    ".agents",
+    ".workspace",
+    "AGENTS.md",
+    "site",
+    "code/target"
+  ]
+}

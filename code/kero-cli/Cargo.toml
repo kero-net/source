@@ -1,0 +1,31 @@
+[package]
+name = "kero-cli"
+version = "0.1.0-alpha.1"
+edition = "2024"
+rust-version = "1.85"
+description = "KERO Controls Operations, Policy, and Environment"
+license = "ISC"
+repository = "https://github.com/kero-net/kero"
+keywords = ["authorization", "policy", "sandbox", "security", "linux"]
+categories = ["command-line-utilities", "authentication"]
+
+[[bin]]
+name = "kero"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+hex = "0.4"
+hmac = "0.12"
+libc = "0.2"
+getrandom = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_jcs = "=0.2.0"
+serde_json = "1"
+sha2 = "0.10"
+thiserror = "2"
+toml = "0.9"
+
+[dev-dependencies]
+tempfile = "3"

@@ -130,21 +130,12 @@ jobs:
           fi
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: .github/automation-requirements.txt
-      - name: Install automation dependencies
-        run: python -m pip install --requirement .github/automation-requirements.txt
+      - name: Set up Lua
+        run: sudo apt-get update && sudo apt-get install --yes groff lua5.4
       - name: Validate publication tooling
         run: |
           bash -n .github/scripts/publish-generated-branch.sh
-          python .github/scripts/validate-repository.py
-          python .github/scripts/test-localization.py
-          python .github/scripts/test-publication.py
-          python .github/scripts/test-publication-manifests.py
+          lua5.4 automation/run.lua repository
 
       - name: Configure release signing
         shell: bash
@@ -185,21 +176,14 @@ jobs:
           CHANNEL: ${{ inputs.channel }}
           VERSION: ${{ inputs.version }}
           SOURCE_COMMIT: ${{ steps.source.outputs.commit }}
-        run: |
-          python .github/scripts/build-publication.py \
-            --source . \
-            --destination ".generated/repo/$CHANNEL" \
-            --config .github/publication/config.yml \
-            --channel "$CHANNEL" \
-            --version "$VERSION" \
-            --source-commit "$SOURCE_COMMIT"
+        run: lua5.4 automation/run.lua publication "$CHANNEL"
 
       - name: Require authored release record
         shell: bash
         env:
           VERSION: ${{ inputs.version }}
         run: |
-          release_record="content/releases/${VERSION}.release.md"
+          release_record="publication/releases/${VERSION}.release.md"
           if [ ! -f "$release_record" ]; then
             echo "Missing authored release record: $release_record" >&2
             exit 1
@@ -222,7 +206,7 @@ jobs:
           fi
           remote_url="https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           bash .github/scripts/publish-generated-branch.sh \
-            ".generated/repo/$CHANNEL" "$remote_url" "$CHANNEL" "$VERSION" \
+            "../.heap/source/staging/publication/$CHANNEL" "$remote_url" "$CHANNEL" "$VERSION" \
             "$SOURCE_COMMIT" "$GITHUB_OUTPUT"
 
       - name: Create signed tag and GitHub Release
@@ -255,8 +239,8 @@ jobs:
           git tag -s -m "$TAG" "$TAG" "$GENERATED_COMMIT"
           git verify-tag "$TAG"
           git push --quiet "$remote_url" "refs/tags/$TAG:refs/tags/$TAG"
-          tar -czf "$RUNNER_TEMP/$TAG.tar.gz" -C ".generated/repo/$CHANNEL" .
-          release_record="content/releases/${VERSION}.release.md"
+          tar -czf "$RUNNER_TEMP/$TAG.tar.gz" -C "../.heap/source/staging/publication/$CHANNEL" .
+          release_record="publication/releases/${VERSION}.release.md"
           release_notes="$(<"$release_record")"
           release_args=(--verify-tag --generate-notes --notes "$release_notes" --title "$VERSION")
           if [ "$CHANNEL" = canary ] || [ "$CHANNEL" = beta ]; then

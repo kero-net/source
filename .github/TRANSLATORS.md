@@ -1,7 +1,7 @@
 # Translating Content
 
 This guide explains how contributors translate repository and Pages content.
-The current locale registry lives only in `content/locales.toml`; this guide
+The current locale registry lives only in `localization/locales.toml`; this guide
 does not duplicate its entries.
 
 ## Model
@@ -14,7 +14,7 @@ value.
 ## {{ l10n:repository.features.title }}
 ```
 
-`en-US` is the fixed default. It must be registered in `content/locales.toml`
+`en-US` is the fixed default. It must be registered in `localization/locales.toml`
 and every translation leaf must define it. The locale registry does not contain
 a schema version or configurable source-locale field.
 
@@ -24,8 +24,8 @@ can be paired directly with README.template.md. The protocol supplies the
 first key segment:
 
 ```text
-content/repo/shared/README.template.md
-content/repo/shared/readme.repository.toml
+publication/repository/README.template.md
+publication/repository/metadata.toml
 ```
 
 ```toml
@@ -43,7 +43,7 @@ across locales.
 
 ## Adding A Translation
 
-1. Confirm the locale ID and fallback order in `content/locales.toml`.
+1. Confirm the locale ID and fallback order in `localization/locales.toml`.
 2. Find the template key for the content being translated.
 3. Open or create the component TOML beside that template.
 4. Add the translation at the existing hierarchical key without replacing the
@@ -59,11 +59,11 @@ ultimately use `en-US`. Unknown keys and missing English values fail rendering.
 Core control files—including `.github/README.md`, `CONTRIBUTING.md`, and
 `LICENSE`—remain English-only and do not use localization markers.
 
-Generated publication branches retain only `content/assets/` from the authored
-`content/` tree. The English repository output becomes `docs/README.md`;
+Generated publication branches retain only public files selected by the
+publication configuration. The English repository output becomes `docs/README.md`;
 additional published translations use `docs/README.<locale>.md`. This generated
 `docs/` directory contains repository README translations, not the authored
-source documentation tree. Pages is structured exclusively by `content/pages/`.
+source documentation tree. Pages is structured exclusively by `docs/pages/`.
 The build compiles each published locale as a runtime content source while
 serving one stable URL. Material for MkDocs displays the language selector;
 JavaScript swaps the current page in place and stores the selection in a cookie.

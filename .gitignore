@@ -1,13 +1,5 @@
-/src/target/
-/.generated/
-.generated/
-/.workspace/
-.agents/
-AGENTS.md
-.vscode/settings.json
-*.py[cod]
-__pycache__/
-*.egg-info/
+/code/target/
+.heap/
 *.key
 *.pem
 *.nonce

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "enabled", "include", "channelInclude", "required", "exclude"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "enabled": { "const": true },
+    "include": { "$ref": "#/$defs/paths" },
+    "channelInclude": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canary", "beta", "stable"],
+      "properties": {
+        "canary": { "$ref": "#/$defs/paths" },
+        "beta": { "$ref": "#/$defs/paths" },
+        "stable": { "$ref": "#/$defs/paths" }
+      }
+    },
+    "required": { "$ref": "#/$defs/paths" },
+    "exclude": { "$ref": "#/$defs/paths" }
+  },
+  "$defs": {
+    "paths": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}
