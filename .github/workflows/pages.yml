@@ -27,14 +27,14 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Set up Pages tooling
+        run: sudo apt-get update && sudo apt-get install --yes lua5.4 pandoc
+
       - name: Validate source branch
         uses: ./.github/actions/branches
         with:
           branch: ${{ github.ref_name }}
           kind: source
-
-      - name: Set up Pages tooling
-        run: sudo apt-get update && sudo apt-get install --yes lua5.4 pandoc
 
       - name: Build Pages
         uses: ./.github/actions/build-pages

@@ -25,14 +25,14 @@ jobs:
           fetch-tags: true
           persist-credentials: false
 
+      - name: Set up repository tooling
+        run: sudo apt-get update && sudo apt-get install --yes groff lua5.4 pandoc
+
       - name: Validate source branch
         uses: ./.github/actions/branches
         with:
           branch: ${{ github.event.pull_request.base.ref || github.ref_name }}
           kind: source
-
-      - name: Set up repository tooling
-        run: sudo apt-get update && sudo apt-get install --yes groff lua5.4 pandoc
 
       - name: Validate source
         uses: ./.github/actions/validate
@@ -49,8 +49,27 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Set up documentation tooling
+        run: sudo apt-get update && sudo apt-get install --yes lua5.4 pandoc
+
+      - name: Build generated repository
+        uses: ./.github/actions/build-repo
+        with:
+          channel: canary
+          destination: ${{ runner.temp }}/kero-repository
+          version: unreleased
+          source-commit: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Build Pages
+        uses: ./.github/actions/build-pages
+        with:
+          destination: ${{ runner.temp }}/kero-pages
+
       - name: Check links
         uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
         with:
-          args: --no-progress --accept 200,429 "repo/templates/*.md" "pages/**/*.md" "i18n/**/*.md" ".github/**/*.md"
+          args: >-
+            --no-progress --accept 200,429
+            "${{ runner.temp }}/kero-repository/**/*.md"
+            "${{ runner.temp }}/kero-pages/**/*.html"
           fail: true
