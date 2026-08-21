@@ -1,4 +1,4 @@
-use kero_cli::policy::{load_policy, load_request};
+use kero_core::policy::{load_policy, load_request};
 use std::fs;
 use tempfile::tempdir;
 

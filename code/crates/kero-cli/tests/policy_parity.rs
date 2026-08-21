@@ -1,5 +1,5 @@
-use kero_cli::canonical;
-use kero_cli::policy::{authorize, load_policy, load_request, load_snapshot};
+use kero_core::canonical;
+use kero_core::policy::{authorize, load_policy, load_request, load_snapshot};
 use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;

@@ -1,6 +1,6 @@
 use chrono::Utc;
-use kero_cli::policy::{authorize, load_policy, load_request};
-use kero_cli::{ArtifactIssueOptions, ArtifactVerifier, issue_artifact};
+use kero_core::policy::{authorize, load_policy, load_request};
+use kero_core::{ArtifactIssueOptions, ArtifactVerifier, issue_artifact};
 use serde_json::json;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;

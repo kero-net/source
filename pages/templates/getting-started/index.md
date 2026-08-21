@@ -5,20 +5,20 @@
 {{ l10n:getting-started.global }}
 
 ```bash
-scope global init
-# or: scope global init --root /chosen/path/.scope
-scope knowledge path global --plain
+kero global init
+# or: kero global init --root /chosen/path/.kero
+kero knowledge path global --plain
 ```
 
 ```bash
-scope init
+kero project init
 ```
 
 {{ l10n:getting-started.layout }}
 
 ```text
-.scope/
-├── scope.toml
+.kero/
+├── kero.toml
 ├── knowledge.toml
 ├── knowledge/
 │   ├── shared/

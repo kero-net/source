@@ -50,7 +50,7 @@ ja-JP = "現在 KERO は Linux を対象としています。Windows バイナ�
 en-US = "Install Rust and the native build tools first:"
 ja-JP = "Rust とネイティブビルドツールを最初にインストールします。"
 [quick_start.build_cli.build_intro.values]
-en-US = "Run the Rust commands from the repository's src directory:"
+en-US = "Run the Rust commands from the repository's code directory:"
 ja-JP = "リポジトリの src ディレクトリで Rust コマンドを実行します。"
 [quick_start.build_cli.path_note.values]
 en-US = "Ensure HOME/.local/bin is on PATH. On Fish, use the absolute /usr/bin/install because some systems define install as a package-manager function."
@@ -125,19 +125,19 @@ ja-JP = "開発"
 en-US = "Run kero project init in a consumer repository to create its single .kero integration directory."
 ja-JP = "利用するリポジトリで kero project init を実行すると、単一の .kero 統合ディレクトリが作成されます。"
 [development.validation.values]
-en-US = "Canonical development happens on source. Run the Rust tests from src and see CONTRIBUTING.md for the full validation workflow."
-ja-JP = "正規の開発は source で行います。src から Rust テストを実行し、完全な検証手順は CONTRIBUTING.md を参照してください。"
+en-US = "Canonical development happens in kero-net/source. Run the Rust tests from code and see CONTRIBUTING.md for the full validation workflow."
+ja-JP = "正規の開発は kero-net/source で行います。Rust テストは code から実行し、完全な検証手順は CONTRIBUTING.md を参照してください。"
 
 [project.heading.values]
 en-US = "Project"
 ja-JP = "プロジェクト"
 [project.branch_ownership.values]
-en-US = "The source branch is canonical. Automation owns the generated canary, beta, and stable publication branches."
-ja-JP = "source ブランチが正規です。生成される canary、beta、stable 公開ブランチは自動化によって管理されます。"
+en-US = "The kero-net/source repository is canonical. Automation owns the generated canary, beta, and stable branches in kero-net/kero."
+ja-JP = "kero-net/source リポジトリが正規です。kero-net/kero の canary、beta、stable ブランチは自動化によって生成されます。"
 
 [project.repository_topology.values]
-en-US = "The current source repository remains canonical until an organization migration is approved. The planned topology is one public repository at [tool-name] and a separate canonical source repository at [tool-name]/src; names, URLs, and ownership are release decisions and are not assumed here."
-ja-JP = "組織移行が承認されるまでは、現在のソースリポジトリが正規です。計画上の構成は [tool-name] の公開リポジトリと [tool-name]/src の正規ソースリポジトリですが、名前、URL、所有権はリリース決定であり、ここでは仮定しません。"
+en-US = "KERO uses a separate authored repository at kero-net/source and a generated public repository at kero-net/kero. The public canary, beta, and stable branches are projections of an immutable source commit."
+ja-JP = "KERO は、作成元の kero-net/source と生成された公開リポジトリ kero-net/kero を分離します。公開される canary、beta、stable ブランチは、不変の source commit から生成されます。"
 
 [license.heading.values]
 en-US = "License"

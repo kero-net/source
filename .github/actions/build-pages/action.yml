@@ -1,0 +1,11 @@
+name: Build KERO Pages
+description: Build the localized GitHub Pages site.
+inputs:
+  destination:
+    required: true
+    description: Output directory for the static site.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: lua5.4 pages/build.lua "${{ inputs.destination }}"

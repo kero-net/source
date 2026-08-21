@@ -1,0 +1,15 @@
+name: Validate KERO branch
+description: Validate an authored source branch or generated publication channel.
+inputs:
+  branch:
+    required: true
+    description: Branch or channel name.
+  kind:
+    required: false
+    default: any
+    description: any, source, or channel.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: lua5.4 "$GITHUB_ACTION_PATH/main.lua" "${{ inputs.branch }}" "${{ inputs.kind }}"

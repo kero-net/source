@@ -1,0 +1,19 @@
+[title.values]
+en-US = "Getting Started"
+ja-JP = "はじめに"
+
+[introduction.values]
+en-US = "Initialize KERO from the root of a repository. KERO creates one integration directory and does not scatter configuration or runtime state across the project."
+ja-JP = "リポジトリのルートで KERO を初期化します。KERO は統合用ディレクトリを一つだけ作成し、設定や実行時状態をプロジェクト全体に分散させません。"
+
+[global.values]
+en-US = "First choose a global environment. `$HOME/.kero` is the suggested default; pass `--root` to store it elsewhere. KERO records the selection in the machine-local XDG configuration."
+ja-JP = "最初にグローバル環境を選択します。推奨される既定値は `$HOME/.kero` です。別の場所に保存するには `--root` を渡します。KERO は選択内容をマシンローカルの XDG 設定に記録します。"
+
+[layout.values]
+en-US = "All KERO-owned project knowledge, policy, checklists, tests, and state live beneath `.kero/`:"
+ja-JP = "KERO が所有するプロジェクト知識、ポリシー、チェックリスト、テスト、状態はすべて `.kero/` の下に配置されます。"
+
+[state.values]
+en-US = "`.kero/state/` is ignored by `.kero/.gitignore`. It contains local snapshots, nonce admission state, audit data, and other runtime evidence; it must not be committed."
+ja-JP = "`.kero/state/` は `.kero/.gitignore` により無視されます。ローカルスナップショット、nonce 管理状態、監査データなどの実行時証拠を格納し、コミットしてはいけません。"

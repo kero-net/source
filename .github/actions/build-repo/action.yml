@@ -1,0 +1,21 @@
+name: Build KERO repository
+description: Build one generated public KERO branch.
+inputs:
+  channel:
+    required: true
+  destination:
+    required: true
+  version:
+    required: true
+  source-commit:
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: >-
+        lua5.4 repo/build.lua
+        "${{ inputs.channel }}"
+        "${{ inputs.destination }}"
+        "${{ inputs.version }}"
+        "${{ inputs.source-commit }}"

@@ -1,5 +1,5 @@
 [workspace]
-members = ["kero-cli"]
+members = ["crates/kero-core", "crates/kero-cli"]
 resolver = "3"
 
 [profile.release]

@@ -1,4 +1,4 @@
-use kero_cli::enforcement::{Checkpoint, verify_checkpoint, write_checkpoint};
+use kero_core::enforcement::{Checkpoint, verify_checkpoint, write_checkpoint};
 use std::fs;
 use tempfile::tempdir;
 

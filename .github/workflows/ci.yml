@@ -18,63 +18,39 @@ jobs:
     name: Repository Contracts
     runs-on: ubuntu-latest
     steps:
-      - name: Require source context
-        shell: bash
-        run: |
-          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
-            actual_ref="$GITHUB_BASE_REF"
-          else
-            actual_ref="$GITHUB_REF_NAME"
-          fi
-          if [ "$actual_ref" != "source" ]; then
-            echo "Validate requires source or a pull request into source, got $actual_ref" >&2
-            exit 1
-          fi
-
-      - name: Checkout validated ref
+      - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
+          fetch-tags: true
           persist-credentials: false
-      - name: Set up Lua
-        run: sudo apt-get update && sudo apt-get install --yes groff lua5.4
-      - name: Validate repository contracts
-        run: lua5.4 automation/run.lua repository
-      - name: Validate shell tooling
-        run: |
-          bash -n .github/scripts/publish-generated-branch.sh
-          bash -n .github/scripts/run-actionlint.sh
-          find automation -name '*.lua' -print0 | xargs -0 -n1 luac5.4 -p
-          groff -z -mandoc docs/man/kero.1
-      - name: Validate GitHub Actions syntax
-        run: bash .github/scripts/run-actionlint.sh
-      - name: Validate Rust through automation
-        run: lua5.4 automation/run.lua validation
-      - name: Build public documentation
-        run: lua5.4 automation/run.lua documentation
+
+      - name: Validate source branch
+        uses: ./.github/actions/branches
+        with:
+          branch: ${{ github.event.pull_request.base.ref || github.ref_name }}
+          kind: source
+
+      - name: Set up repository tooling
+        run: sudo apt-get update && sudo apt-get install --yes groff lua5.4 pandoc
+
+      - name: Validate source
+        uses: ./.github/actions/validate
+
+      - name: Validate GitHub Actions
+        run: lua5.4 .github/actions/validate/actionlint.lua
 
   links:
     name: Documentation Links
     runs-on: ubuntu-latest
     steps:
-      - name: Require source context
-        shell: bash
-        run: |
-          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
-            actual_ref="$GITHUB_BASE_REF"
-          else
-            actual_ref="$GITHUB_REF_NAME"
-          fi
-          if [ "$actual_ref" != "source" ]; then
-            echo "Validate requires source or a pull request into source, got $actual_ref" >&2
-            exit 1
-          fi
-
-      - name: Checkout validated ref
+      - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
       - name: Check links
         uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
         with:
-          args: --no-progress --accept 200,429 "CODE_OF_CONDUCT.md" "CONTRIBUTING.md" "SECURITY.md" "docs/**/*.md" ".github/**/*.md"
+          args: --no-progress --accept 200,429 "repo/templates/*.md" "pages/**/*.md" "i18n/**/*.md" ".github/**/*.md"
           fail: true

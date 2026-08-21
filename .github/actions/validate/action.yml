@@ -1,0 +1,7 @@
+name: Validate KERO source
+description: Run the source repository's canonical validation entrypoint.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: lua5.4 "$GITHUB_ACTION_PATH/main.lua"

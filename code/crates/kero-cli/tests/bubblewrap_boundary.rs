@@ -1,4 +1,4 @@
-use kero_cli::boundary::bubblewrap::{self, BubblewrapError, CommandSpec};
+use kero_core::boundary::bubblewrap::{self, BubblewrapError, CommandSpec};
 use std::time::Duration;
 
 fn spec() -> CommandSpec {

@@ -1,6 +1,6 @@
 use chrono::{Duration, SecondsFormat, Utc};
-use kero_cli::Capability;
-use kero_cli::enforcement::{
+use kero_core::Capability;
+use kero_core::enforcement::{
     AdmissionError, Attempt, AuditEvent, AuditLog, BrokerState, CapabilityObservation, Checkpoint,
     Lifecycle, NonceStore, StateError, admit, recover_state, verify_checkpoint, write_checkpoint,
 };

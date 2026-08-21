@@ -4,7 +4,12 @@ on:
   workflow_dispatch:
   push:
     branches: [source]
-    paths: ["docs/**", "localization/**", "publication/**", "automation/**", ".github/workflows/pages.yml"]
+    paths:
+      - "assets/**"
+      - "i18n/**"
+      - "pages/**"
+      - ".github/actions/build-pages/**"
+      - ".github/workflows/pages.yml"
 
 permissions:
   contents: read
@@ -17,17 +22,32 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Set up Lua
-        run: sudo apt-get update && sudo apt-get install --yes lua5.4
-      - name: Build documentation
-        run: lua5.4 automation/run.lua documentation
-      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
-      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+
+      - name: Validate source branch
+        uses: ./.github/actions/branches
         with:
-          path: ../.heap/source/preview/documentation
+          branch: ${{ github.ref_name }}
+          kind: source
+
+      - name: Set up Pages tooling
+        run: sudo apt-get update && sudo apt-get install --yes lua5.4 pandoc
+
+      - name: Build Pages
+        uses: ./.github/actions/build-pages
+        with:
+          destination: ${{ runner.temp }}/kero-pages
+
+      - name: Configure Pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: ${{ runner.temp }}/kero-pages
 
   deploy:
     needs: build
@@ -39,5 +59,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - id: deployment
+      - name: Deploy Pages
+        id: deployment
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0

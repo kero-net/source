@@ -1,0 +1,7 @@
+name: Validate dependency inputs
+description: Check authored dependency manifests before GitHub dependency review.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: lua5.4 "$GITHUB_ACTION_PATH/main.lua"

@@ -1,5 +1,5 @@
 [package]
-name = "kero-cli"
+name = "kero-core"
 version = "0.1.0-alpha.1"
 edition = "2024"
 rust-version = "1.85"
@@ -9,12 +9,7 @@ repository = "https://github.com/kero-net/kero"
 keywords = ["authorization", "policy", "sandbox", "security", "linux"]
 categories = ["command-line-utilities", "authentication"]
 
-[[bin]]
-name = "kero"
-path = "src/main.rs"
-
 [dependencies]
-clap = { version = "4.5", features = ["derive"] }
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 hex = "0.4"
 hmac = "0.12"

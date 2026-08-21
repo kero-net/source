@@ -29,7 +29,7 @@ Global policy is not implicitly merged with project policy. When resolving a pol
 Install from a source checkout by passing the CLI crate directory to Cargo:
 .PP
 .EX
-cargo install --path /path/to/kero-source/code/kero-cli --locked
+cargo install --path /path/to/kero-source/code/crates/kero-cli --locked
 .EE
 .PP
 Cargo installs the executable into
@@ -45,7 +45,7 @@ fish_add_path ~/.cargo/bin
 Install this manual page into the user manual path:
 .PP
 .EX
-install -Dm644 docs/man/kero.1 ~/.local/share/man/man1/kero.1
+install -Dm644 code/man/kero.1 ~/.local/share/man/man1/kero.1
 man kero
 .EE
 .SH COMMANDS

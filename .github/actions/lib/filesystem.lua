@@ -1,11 +1,26 @@
 local filesystem = {}
-function filesystem.exists(path) local f = io.open(path, "rb"); if f then f:close(); return true end; return false end
+
 function filesystem.read(path)
-  local f, e = io.open(path, "rb"); if not f then return nil, e end
-  local value = f:read("*a"); f:close(); return value
+  local file, message = io.open(path, "rb")
+  if not file then return nil, message end
+  local value = file:read("*a")
+  file:close()
+  return value
 end
+
 function filesystem.write(path, value)
-  local f, e = io.open(path, "wb"); if not f then return false, e end
-  f:write(value); f:close(); return true
+  local file, message = io.open(path, "wb")
+  if not file then return false, message end
+  file:write(value)
+  file:close()
+  return true
 end
+
+function filesystem.is_file(path)
+  local file = io.open(path, "rb")
+  if not file then return false end
+  file:close()
+  return true
+end
+
 return filesystem

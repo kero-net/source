@@ -1,0 +1,11 @@
+[release.kind.regular.values]
+en-US = "Regular release"
+ja-JP = "通常リリース"
+
+[release.kind.hotfix.values]
+en-US = "Hotfix"
+ja-JP = "ホットフィックス"
+
+[release.kind.security.values]
+en-US = "Security release"
+ja-JP = "セキュリティリリース"

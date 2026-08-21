@@ -1,0 +1,26 @@
+name: Publish KERO release
+description: Replace a generated branch, create its signed tag, and create the public GitHub Release.
+inputs:
+  channel:
+    required: true
+  version:
+    required: true
+  source-commit:
+    required: true
+  payload:
+    required: true
+outputs:
+  generated-commit:
+    description: Commit published to the generated branch.
+    value: ${{ steps.publish.outputs.generated_commit }}
+runs:
+  using: composite
+  steps:
+    - id: publish
+      shell: bash
+      run: >-
+        lua5.4 "$GITHUB_ACTION_PATH/main.lua"
+        "${{ inputs.channel }}"
+        "${{ inputs.version }}"
+        "${{ inputs.source-commit }}"
+        "${{ inputs.payload }}"

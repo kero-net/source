@@ -1,8 +1,8 @@
 cff-version: 1.2.0
-message: If you use SCOPE, please cite it using this metadata.
-title: SCOPE
+message: If you use KERO, please cite it using this metadata.
+title: KERO
 type: software
 authors:
   - family-names: Kooraseru
-repository-code: https://github.com/Kooraseru/SCOPE
-url: https://kooraseru.github.io/SCOPE/
+repository-code: https://github.com/kero-net/kero
+license: ISC

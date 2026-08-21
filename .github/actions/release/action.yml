@@ -1,0 +1,16 @@
+name: Validate KERO release
+description: Validate a release ID, authored record, and release sequence.
+inputs:
+  version:
+    required: true
+    description: Release ID without a leading v.
+outputs:
+  tag:
+    description: Signed release tag name.
+    value: ${{ steps.release.outputs.tag }}
+runs:
+  using: composite
+  steps:
+    - id: release
+      shell: bash
+      run: lua5.4 "$GITHUB_ACTION_PATH/main.lua" "${{ inputs.version }}"

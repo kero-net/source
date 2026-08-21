@@ -1,9 +1,10 @@
 <div align="center">
+  <img src="assets/images/kero-icon.png">
   <h1>KERO</h1>
   <h3>{{ l10n:repository.hero.tagline }}</h3>
   <p><a href="https://github.com/kero-net/kero"><img alt="Stars + Issues + License" src="https://shieldcn.dev/group/github/stars/kero-net/kero+github/kero-net/kero/issues+github/license/kero-net/kero.svg?variant=outline"></a></p>
   <table><tr><td><a href="#features">{{ l10n:repository.navigation.features }}</a></td><td><a href="#quick-start">{{ l10n:repository.navigation.quick_start }}</a></td><td><a href="#policy-model">{{ l10n:repository.navigation.policy_model }}</a></td><td><a href="#status">{{ l10n:repository.navigation.status }}</a></td><td><a href="#development">{{ l10n:repository.navigation.development }}</a></td><td><a href="#project">{{ l10n:repository.navigation.project }}</a></td></tr></table>
-  <table><tr><td><a href="README.md">English</a></td><td><a href="README.ja-JP.md">日本語</a></td></tr></table>
+  {{ locales:repository }}
 </div>
 
 <h2 id="features">{{ l10n:repository.features.heading }}</h2>

@@ -1,7 +1,7 @@
 use chrono::Utc;
-use kero_cli::canonical;
-use kero_cli::policy::{authorize, load_policy, load_request};
-use kero_cli::{
+use kero_core::canonical;
+use kero_core::policy::{authorize, load_policy, load_request};
+use kero_core::{
     ArtifactBinding, ArtifactIssueOptions, ArtifactVerifier, WorkspaceWriteBroker, issue_artifact,
 };
 use serde_json::json;

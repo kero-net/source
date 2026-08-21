@@ -4,16 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       channel:
-        description: Generated branch to replace.
+        description: Generated public branch to replace.
         required: true
         type: choice
         options: [canary, beta, stable]
       version:
-        description: Authored release to publish.
+        description: Authored release ID without a leading v.
         required: true
-        type: choice
-        options:
-          - 2026.08.1-regular
+        type: string
 
 permissions:
   contents: read
@@ -28,39 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: release
     steps:
-      - name: Require source workflow ref
-        shell: bash
-        run: |
-          if [ "${ACT:-}" = true ]; then
-            echo "Local workflow run: using the current workspace."
-            exit 0
-          fi
-          if [ "$GITHUB_REF_NAME" != "source" ]; then
-            echo "Publish must be dispatched from source, got $GITHUB_REF_NAME" >&2
-            exit 1
-          fi
-
-      - name: Require protected release configuration
-        shell: bash
-        env:
-          TOKEN: ${{ secrets.PERSONAL_RELEASE_TOKEN }}
-          SIGNING_KEY: ${{ secrets.PERSONAL_SIGNING_KEY }}
-          SIGNING_NAME: ${{ vars.RELEASE_SIGNING_NAME }}
-          SIGNING_EMAIL: ${{ vars.RELEASE_SIGNING_EMAIL }}
-        run: |
-          if [ "${ACT:-}" = true ]; then
-            echo "Local workflow run: protected release configuration is not required."
-            exit 0
-          fi
-          for name in TOKEN SIGNING_KEY SIGNING_NAME SIGNING_EMAIL; do
-            if [ -z "${!name:-}" ]; then
-              echo "Missing protected release value: $name" >&2
-              exit 1
-            fi
-          done
-
-      - name: Checkout source
-        if: ${{ env.ACT != 'true' }}
+      - name: Check out canonical source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: source
@@ -68,75 +34,44 @@ jobs:
           fetch-tags: true
           persist-credentials: false
 
+      - name: Validate source branch
+        uses: ./.github/actions/branches
+        with:
+          branch: ${{ github.ref_name }}
+          kind: source
+
+      - name: Validate publication channel
+        uses: ./.github/actions/branches
+        with:
+          branch: ${{ inputs.channel }}
+          kind: channel
+
+      - name: Set up release tooling
+        run: sudo apt-get update && sudo apt-get install --yes groff lua5.4 pandoc
+
+      - name: Validate source
+        uses: ./.github/actions/validate
+
+      - name: Validate release
+        id: release
+        uses: ./.github/actions/release
+        with:
+          version: ${{ inputs.version }}
+
       - name: Resolve immutable source commit
         id: source
         shell: bash
-        run: |
-          if [ "${ACT:-}" = true ]; then
-            source_commit="$(git rev-parse HEAD)"
-            if [ -n "$(git status --porcelain --untracked-files=all)" ]; then
-              echo "Local workflow run: building the current dirty workspace with HEAD provenance $source_commit."
-            fi
-            echo "commit=$source_commit" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          git fetch origin source:refs/remotes/origin/source --no-tags
-          source_commit="$(git rev-parse HEAD)"
-          if ! git merge-base --is-ancestor "$source_commit" origin/source; then
-            echo "Checked out commit is not part of origin/source: $source_commit" >&2
-            exit 1
-          fi
-          echo "commit=$source_commit" >> "$GITHUB_OUTPUT"
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Validate version
-        id: release
-        shell: bash
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          if [[ "$VERSION" == v* ]]; then
-            echo "Version must not include the leading v: $VERSION" >&2
-            exit 1
-          fi
-          if [[ ! "$VERSION" =~ ^[0-9]{4}\.(0[1-9]|1[0-2])\.[1-9][0-9]*-(regular|hotfix|security)$ ]]; then
-            echo "Release ID must match YYYY.MM.N-KIND using regular, hotfix, or security: $VERSION" >&2
-            exit 1
-          fi
-          year_month="${VERSION%.*}"
-          sequence_and_kind="${VERSION##*.}"
-          sequence="${sequence_and_kind%%-*}"
-          requested_period="${year_month/.}"
-          latest_period=0
-          latest_sequence=0
-          while IFS= read -r tag; do
-            existing="${tag#v}"
-            [[ "$existing" =~ ^([0-9]{4})\.(0[1-9]|1[0-2])\.([1-9][0-9]*)-(regular|hotfix|security)$ ]] || continue
-            period="${BASH_REMATCH[1]}${BASH_REMATCH[2]}"
-            existing_sequence="${BASH_REMATCH[3]}"
-            if (( period > latest_period || (period == latest_period && existing_sequence > latest_sequence) )); then
-              latest_period="$period"
-              latest_sequence="$existing_sequence"
-            fi
-          done < <(git tag --list 'v*')
-          if (( requested_period < latest_period )); then
-            echo "Release ID period $year_month precedes the current release period ${latest_period:0:4}.${latest_period:4:2}" >&2
-            exit 1
-          fi
-          expected=1
-          (( requested_period == latest_period )) && expected=$((latest_sequence + 1))
-          if [ "$sequence" -ne "$expected" ]; then
-            echo "Release ID sequence must be $expected for $year_month; got $sequence" >&2
-            exit 1
-          fi
-          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Build generated repository
+        uses: ./.github/actions/build-repo
+        with:
+          channel: ${{ inputs.channel }}
+          destination: ${{ runner.temp }}/kero-publication
+          version: ${{ inputs.version }}
+          source-commit: ${{ steps.source.outputs.commit }}
 
-      - name: Set up Lua
-        run: sudo apt-get update && sudo apt-get install --yes groff lua5.4
-      - name: Validate publication tooling
-        run: |
-          bash -n .github/scripts/publish-generated-branch.sh
-          lua5.4 automation/run.lua repository
-
+      # Keep signing setup explicit until the GPG identity model is reviewed independently.
       - name: Configure release signing
         shell: bash
         env:
@@ -145,10 +80,12 @@ jobs:
           RELEASE_SIGNING_NAME: ${{ vars.RELEASE_SIGNING_NAME }}
           RELEASE_SIGNING_EMAIL: ${{ vars.RELEASE_SIGNING_EMAIL }}
         run: |
-          if [ "${ACT:-}" = true ]; then
-            echo "Local workflow run: GPG signing setup is unavailable and was skipped."
-            exit 0
-          fi
+          for name in PERSONAL_SIGNING_KEY RELEASE_SIGNING_NAME RELEASE_SIGNING_EMAIL; do
+            if [ -z "${!name:-}" ]; then
+              echo "Missing protected release value: $name" >&2
+              exit 1
+            fi
+          done
           printf '%s' "$PERSONAL_SIGNING_KEY" | gpg --batch --import
           fingerprint="$(gpg --batch --with-colons --list-secret-keys | awk -F: '$1 == "fpr" { print $10; exit }')"
           if [ -z "$fingerprint" ]; then
@@ -156,7 +93,7 @@ jobs:
             exit 1
           fi
           wrapper="$RUNNER_TEMP/gpg-wrapper"
-          # shellcheck disable=SC2016 # Preserve variables for the generated wrapper.
+          # shellcheck disable=SC2016
           printf '%s\n' \
             '#!/usr/bin/env bash' \
             'args=(--batch --yes --pinentry-mode loopback)' \
@@ -170,86 +107,17 @@ jobs:
           git config --global commit.gpgsign true
           git config --global tag.gpgSign true
 
-      - name: Build publication payload
-        shell: bash
+      - name: Publish generated repository
+        uses: ./.github/actions/publish
         env:
-          CHANNEL: ${{ inputs.channel }}
-          VERSION: ${{ inputs.version }}
-          SOURCE_COMMIT: ${{ steps.source.outputs.commit }}
-        run: lua5.4 automation/run.lua publication "$CHANNEL"
-
-      - name: Require authored release record
-        shell: bash
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          release_record="publication/releases/${VERSION}.release.md"
-          if [ ! -f "$release_record" ]; then
-            echo "Missing authored release record: $release_record" >&2
-            exit 1
-          fi
-
-      - name: Publish generated branch
-        id: generated
-        shell: bash
-        env:
-          CHANNEL: ${{ inputs.channel }}
-          VERSION: ${{ inputs.version }}
-          SOURCE_COMMIT: ${{ steps.source.outputs.commit }}
-          TOKEN: ${{ secrets.PERSONAL_RELEASE_TOKEN }}
+          PERSONAL_RELEASE_TOKEN: ${{ secrets.PERSONAL_RELEASE_TOKEN }}
           PERSONAL_SIGNING_PASSPHRASE: ${{ secrets.PERSONAL_SIGNING_PASSPHRASE }}
-        run: |
-          if [ "${ACT:-}" = true ]; then
-            echo "Local workflow run: publishing the generated branch is unavailable and was skipped."
-            echo "generated_commit=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          remote_url="https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          bash .github/scripts/publish-generated-branch.sh \
-            "../.heap/source/staging/publication/$CHANNEL" "$remote_url" "$CHANNEL" "$VERSION" \
-            "$SOURCE_COMMIT" "$GITHUB_OUTPUT"
-
-      - name: Create signed tag and GitHub Release
-        shell: bash
-        env:
           GH_TOKEN: ${{ secrets.PERSONAL_RELEASE_TOKEN }}
-          TOKEN: ${{ secrets.PERSONAL_RELEASE_TOKEN }}
-          TAG: ${{ steps.release.outputs.tag }}
-          CHANNEL: ${{ inputs.channel }}
-          GENERATED_COMMIT: ${{ steps.generated.outputs.generated_commit }}
-          VERSION: ${{ inputs.version }}
-          PERSONAL_SIGNING_PASSPHRASE: ${{ secrets.PERSONAL_SIGNING_PASSPHRASE }}
-        run: |
-          if [ "${ACT:-}" = true ]; then
-            echo "Local workflow run: signed tag and GitHub Release creation are unavailable and were skipped."
-            exit 0
-          fi
-          remote_url="https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          release_exists=false
-          tag_exists=false
-          gh release view "$TAG" >/dev/null 2>&1 && release_exists=true
-          git ls-remote --exit-code --tags "$remote_url" "refs/tags/$TAG" >/dev/null 2>&1 && tag_exists=true
-          if [ "$release_exists" = true ] || [ "$tag_exists" = true ]; then
-            echo "$TAG already exists; release IDs are immutable" >&2
-            exit 1
-          fi
-          git fetch "$remote_url" "refs/heads/$CHANNEL" --depth=1
-          git cat-file -e "$GENERATED_COMMIT^{commit}"
-          git verify-commit "$GENERATED_COMMIT"
-          git tag -s -m "$TAG" "$TAG" "$GENERATED_COMMIT"
-          git verify-tag "$TAG"
-          git push --quiet "$remote_url" "refs/tags/$TAG:refs/tags/$TAG"
-          tar -czf "$RUNNER_TEMP/$TAG.tar.gz" -C "../.heap/source/staging/publication/$CHANNEL" .
-          release_record="publication/releases/${VERSION}.release.md"
-          release_notes="$(<"$release_record")"
-          release_args=(--verify-tag --generate-notes --notes "$release_notes" --title "$VERSION")
-          if [ "$CHANNEL" = canary ] || [ "$CHANNEL" = beta ]; then
-            release_args+=(--prerelease --latest=false)
-          else
-            release_args+=(--prerelease=false --latest)
-          fi
-          gh release create "$TAG" "$RUNNER_TEMP/$TAG.tar.gz" "${release_args[@]}"
-
+        with:
+          channel: ${{ inputs.channel }}
+          version: ${{ inputs.version }}
+          source-commit: ${{ steps.source.outputs.commit }}
+          payload: ${{ runner.temp }}/kero-publication
 
   refresh-pages:
     name: Refresh Pages
@@ -262,9 +130,4 @@ jobs:
       - name: Dispatch source-owned Pages workflow
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          if [ "${ACT:-}" = true ]; then
-            echo "Local workflow run: Pages workflow dispatch is unavailable and was skipped."
-            exit 0
-          fi
-          gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref source
+        run: gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref source

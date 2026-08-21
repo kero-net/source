@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand, ValueEnum};
-use kero_cli::layout;
-use kero_cli::policy::{authorize, load_policy, load_request, load_snapshot};
-use kero_cli::{
+use kero_core::layout;
+use kero_core::policy::{authorize, load_policy, load_request, load_snapshot};
+use kero_core::{
     ArtifactBinding, ArtifactVerifier, CommandSpec, HttpsSpec, PushSpec, WorkspaceWriteBroker,
 };
 use serde_json::json;
@@ -289,7 +289,7 @@ fn main() {
             let result = (|| {
                 let content = std::fs::read(content)?;
                 let verifier = ArtifactVerifier::new(
-                    kero_cli::boundary::workspace_write::BOUNDARY,
+                    kero_core::boundary::workspace_write::BOUNDARY,
                     "filesystem.write",
                     key,
                     snapshot,
@@ -303,7 +303,7 @@ fn main() {
                     trusted_context_digest: context_digest,
                     execution_binding: json!({
                         "path": target,
-                        "content_digest": kero_cli::canonical::sha256(&content),
+                        "content_digest": kero_core::canonical::sha256(&content),
                     }),
                     boundary_generation: Some(
                         broker
@@ -329,7 +329,7 @@ fn main() {
             timeout_seconds,
             output_limit,
             argv,
-        } => match kero_cli::boundary::bubblewrap::run(
+        } => match kero_core::boundary::bubblewrap::run(
             binary,
             &CommandSpec {
                 argv,
@@ -357,7 +357,7 @@ fn main() {
             remote,
             refspec,
             timeout_seconds,
-        } => match kero_cli::boundary::git_push::push(
+        } => match kero_core::boundary::git_push::push(
             binary,
             &PushSpec {
                 worktree,
@@ -392,13 +392,13 @@ fn main() {
         } => {
             let result = (|| {
                 let body = std::fs::read(body)?;
-                kero_cli::boundary::https_service::invoke(
+                kero_core::boundary::https_service::invoke(
                     binary,
                     &HttpsSpec {
                         url,
                         method,
                         headers,
-                        body_digest: kero_cli::canonical::sha256(&body),
+                        body_digest: kero_core::canonical::sha256(&body),
                         body,
                         hostname,
                         address,
@@ -415,7 +415,7 @@ fn main() {
                         "capability": "CAN",
                         "enforcement": "ADVISORY",
                         "execution": "EXECUTE",
-                        "response_digest": kero_cli::canonical::sha256(&response),
+                        "response_digest": kero_core::canonical::sha256(&response),
                         "response_bytes": response.len(),
                     }));
                     0

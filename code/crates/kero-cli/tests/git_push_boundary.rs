@@ -1,4 +1,4 @@
-use kero_cli::boundary::git_push::{self, GitPushError, PushSpec};
+use kero_core::boundary::git_push::{self, GitPushError, PushSpec};
 use std::path::PathBuf;
 use std::time::Duration;
 use tempfile::tempdir;

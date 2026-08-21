@@ -1,0 +1,22 @@
+[package]
+name = "kero-cli"
+version = "0.1.0-alpha.1"
+edition = "2024"
+rust-version = "1.85"
+description = "KERO command-line interface"
+license = "ISC"
+repository = "https://github.com/kero-net/kero"
+
+[[bin]]
+name = "kero"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+kero-core = { path = "../kero-core" }
+serde = "1"
+serde_json = "1"
+
+[dev-dependencies]
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+tempfile = "3"

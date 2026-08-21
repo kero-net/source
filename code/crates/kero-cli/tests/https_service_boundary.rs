@@ -1,5 +1,5 @@
-use kero_cli::boundary::https_service::{self, HttpsError, HttpsSpec};
-use kero_cli::canonical;
+use kero_core::boundary::https_service::{self, HttpsError, HttpsSpec};
+use kero_core::canonical;
 use std::time::Duration;
 use tempfile::tempdir;
 
