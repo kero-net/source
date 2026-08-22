@@ -28,6 +28,8 @@ assert(not policy.publication_matches(
 assert(not policy.publication_matches(
   publication, "canary", "2026.08.2-hotfix", "0123456789012345678901234567890123456789"
 ))
+assert(policy.release_identity_matches(publication, "canary", "2026.08.1-regular"))
+assert(not policy.release_identity_matches(publication, "stable", "2026.08.1-regular"))
 
 local workflow = read(".github/workflows/release.yml")
 assert(workflow:match("actions/create%-github%-app%-token@bcd2ba49218906704ab6c1aa796996da409d3eb1"))
@@ -37,6 +39,11 @@ assert(workflow:match("owner: kero%-net"))
 assert(workflow:match("repositories: kero"))
 assert(not workflow:match("PERSONAL_"))
 assert(not workflow:match("RELEASE_SIGNING_"))
+
+local publisher = read(".github/actions/publish/main.lua")
+assert(publisher:match("gh release delete"))
+assert(not publisher:match("tar %-czf"))
+assert(not publisher:match('command%.quote%(archive%)'))
 
 local missing = io.popen(
   "env -u KERO_RELEASE_TOKEN -u GH_TOKEN lua5.4 .github/actions/publish/main.lua canary "
