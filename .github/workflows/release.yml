@@ -9,9 +9,11 @@ on:
         type: choice
         options: [canary, beta, stable]
       version:
-        description: Authored release ID without a leading v.
+        description: Authored release to publish.
         required: true
-        type: string
+        type: choice
+        options:
+          - 2026.08.1-regular
 
 permissions:
   contents: read
