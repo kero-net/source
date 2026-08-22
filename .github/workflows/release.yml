@@ -118,7 +118,7 @@ jobs:
             'exec gpg "${args[@]}" "$@"' > "$wrapper"
           chmod 700 "$wrapper"
           git config --global user.name "KERO Release System"
-          git config --global user.email "release@kero-net.github.io"
+          git config --global user.email "129922068+Kooraseru@users.noreply.github.com"
           git config --global user.signingkey "$fingerprint"
           git config --global gpg.program "$wrapper"
           git config --global commit.gpgsign true
