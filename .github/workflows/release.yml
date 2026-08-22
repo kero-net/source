@@ -34,6 +34,9 @@ jobs:
           fetch-tags: true
           persist-credentials: false
 
+      - name: Set up release tooling
+        run: sudo apt-get update && sudo apt-get install --yes groff lua5.4 pandoc
+
       - name: Validate source branch
         uses: ./.github/actions/branches
         with:
@@ -45,9 +48,6 @@ jobs:
         with:
           branch: ${{ inputs.channel }}
           kind: channel
-
-      - name: Set up release tooling
-        run: sudo apt-get update && sudo apt-get install --yes groff lua5.4 pandoc
 
       - name: Validate source
         uses: ./.github/actions/validate
