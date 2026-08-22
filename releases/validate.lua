@@ -31,6 +31,51 @@ function releases.validate(root, version)
   return true
 end
 
+local function read(path)
+  local file = io.open(path, "r")
+  if not file then return nil end
+  local value = file:read("*a")
+  file:close()
+  return value
+end
+
+function releases.validate_workflow_choices(root, record_ids)
+  local workflow = read(root .. "/.github/workflows/release.yml")
+  if not workflow then return false, "missing release workflow" end
+
+  local version = workflow:match("\n      version:\n(.-)\n\npermissions:")
+  if not version or not version:match("\n        type: choice\n") then
+    return false, "release workflow version input must use type: choice"
+  end
+
+  local options = version:match("\n        options:\n(.*)")
+  if not options then return false, "release workflow version input must define options" end
+
+  local actual = {}
+  local count = 0
+  for choice in options:gmatch("          %- ([^\r\n]+)") do
+    if actual[choice] then return false, "duplicate release workflow choice: " .. choice end
+    actual[choice] = true
+    count = count + 1
+  end
+  if count == 0 then return false, "release workflow version choices must not be empty" end
+
+  local expected = {}
+  for _, release_id in ipairs(record_ids) do expected[release_id] = true end
+  for release_id in pairs(expected) do
+    if not actual[release_id] then
+      return false, "release workflow is missing authored release choice: " .. release_id
+    end
+  end
+  for release_id in pairs(actual) do
+    if not expected[release_id] then
+      return false, "release workflow has unauthored release choice: " .. release_id
+    end
+  end
+  if count ~= #record_ids then return false, "release workflow choices do not match authored releases" end
+  return true
+end
+
 function releases.validate_sequence(version, tags)
   local requested = releases.parse_id(version)
   if not requested then return false, "invalid release ID: " .. tostring(version) end
