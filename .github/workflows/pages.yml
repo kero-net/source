@@ -2,6 +2,15 @@ name: Pages
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [source]
+    paths:
+      - "assets/**"
+      - "i18n/**"
+      - "pages/**"
+      - ".github/actions/branches/**"
+      - ".github/actions/build-pages/**"
+      - ".github/workflows/pages.yml"
   push:
     branches: [source]
     paths:
@@ -27,14 +36,14 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Set up Pages tooling
+        run: sudo apt-get update && sudo apt-get install --yes lua5.4 pandoc
+
       - name: Validate source branch
         uses: ./.github/actions/branches
         with:
-          branch: ${{ github.ref_name }}
+          branch: ${{ github.event.pull_request.base.ref || github.ref_name }}
           kind: source
-
-      - name: Set up Pages tooling
-        run: sudo apt-get update && sudo apt-get install --yes lua5.4 pandoc
 
       - name: Build Pages
         uses: ./.github/actions/build-pages
@@ -50,6 +59,7 @@ jobs:
           path: ${{ runner.temp }}/kero-pages
 
   deploy:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     permissions:
