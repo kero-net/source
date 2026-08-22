@@ -98,8 +98,14 @@ jobs:
             KERO_GPG_PRIVATE_KEY \
             KERO_GPG_PASSPHRASE
           do
+            if [ -z "${!name:-}" ]; then
+              echo "Missing protected release value: $name" >&2
+              exit 1
+            fi
+          done
+
           expected="${KERO_GPG_KEY_ID#0x}"
-          expected="${expected^^}"
+          
           if [[ ! "$expected" =~ ^[0-9A-F]{40}$ ]]; then
             echo "KERO_GPG_KEY_ID must be a full 40-character fingerprint" >&2
             exit 1
