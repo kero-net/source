@@ -22,3 +22,9 @@ organization Actions values:
 The workflow mints a short-lived token explicitly restricted to the `kero`
 repository. Generated branches, signed tags, and GitHub Releases are published
 to `kero-net/kero`.
+
+Channel branches and GitHub Release objects are replaceable. Release tags are
+immutable: rerunning publication keeps an existing verified tag, replaces the
+selected channel branch, deletes only the old GitHub Release object, and then
+recreates that Release from the authored record. GitHub's automatic source
+archives remain available; the publisher does not attach a duplicate tarball.

@@ -14,4 +14,10 @@ function policy.publication_matches(value, channel, version, source_commit)
     and value:match('source%s*=%s*"([^"]+)"') == source_commit
 end
 
+function policy.release_identity_matches(value, channel, version)
+  if type(value) ~= "string" then return false end
+  return value:match('channel%s*=%s*"([^"]+)"') == channel
+    and value:match('version%s*=%s*"([^"]+)"') == version
+end
+
 return policy
