@@ -46,6 +46,7 @@ local commands = {
   "find pages repo releases i18n .github/actions -name '*.lua' -print0 | xargs -0 -n1 luac5.4 -p",
   "lua5.4 i18n/validate.lua",
   "lua5.4 releases/test.lua",
+  "lua5.4 .github/actions/publish/test.lua",
   "lua5.4 pages/build.lua ../.heap/source/pages/site",
   "lua5.4 repo/build.lua canary ../.heap/source/repo/canary",
   "groff -z -mandoc code/man/kero.1",
