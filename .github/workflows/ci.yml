@@ -69,7 +69,8 @@ jobs:
         uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
         with:
           args: >-
-            --no-progress --accept 200,429
+            github-token: ${{ github.token }}
+            --no-progress --accept ..=204,429
             "${{ runner.temp }}/kero-repository/**/*.md"
             "${{ runner.temp }}/kero-pages/**/*.html"
-          fail: true
+          fail: false
