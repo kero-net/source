@@ -3,7 +3,7 @@ documentation:
       - any-glob-to-any-file: ["**/*.md"]
 github-actions:
   - changed-files:
-      - any-glob-to-any-file: [".github/workflows/**", ".github/actions/**"]
+      - any-glob-to-any-file: [".github/workflows/**", ".github/actions/**", ".github/scripts/**", ".github/tests/**"]
 security:
   - changed-files:
-      - any-glob-to-any-file: ["repo/templates/SECURITY.md", "code/**", ".github/workflows/dependency-review.yml", ".github/workflows/codeql.yml"]
+      - any-glob-to-any-file: ["repo/templates/SECURITY.md", "code/**", ".github/workflows/ci.yml", ".github/workflows/codeql.yml", ".github/scripts/dependency-inputs.lua"]

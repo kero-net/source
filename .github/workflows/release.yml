@@ -11,68 +11,143 @@ on:
       version:
         description: Authored release to publish.
         required: true
-        type: choice
-        options:
-          - 2026.08.1-regular
+        type: string
 
 permissions:
   contents: read
+  checks: read
 
 concurrency:
   group: publish-release-stream
   cancel-in-progress: false
 
 jobs:
-  publish:
-    name: Publish ${{ inputs.channel }}
+  publish-request:
+    name: Publish Request
     runs-on: ubuntu-latest
-    environment: release
+    outputs:
+      source-commit: ${{ steps.source.outputs.commit }}
     steps:
       - name: Check out canonical source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: source
-          fetch-depth: 0
-          fetch-tags: true
           persist-credentials: false
-
-      - name: Set up release tooling
-        run: sudo apt-get update && sudo apt-get install --yes groff lua5.4 pandoc
-
-      - name: Validate source branch
+      - name: Set up Lua
+        run: sudo apt-get update && sudo apt-get install --yes lua5.4
+      - name: Require source dispatch
         uses: ./.github/actions/branches
         with:
           branch: ${{ github.ref_name }}
           kind: source
-
       - name: Validate publication channel
         uses: ./.github/actions/branches
         with:
           branch: ${{ inputs.channel }}
           kind: channel
-
-      - name: Validate source
-        uses: ./.github/actions/validate
-
-      - name: Validate release
-        id: release
-        uses: ./.github/actions/release
-        with:
-          version: ${{ inputs.version }}
-
       - name: Resolve immutable source commit
         id: source
-        shell: bash
         run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
+  verify-source-ci:
+    name: Verify Source CI
+    needs: publish-request
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require successful CI Gate for source commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KERO_SOURCE_COMMIT: ${{ needs.publish-request.outputs.source-commit }}
+        run: |
+          conclusion="$(
+            gh api \
+              -H "Accept: application/vnd.github+json" \
+              "repos/$GITHUB_REPOSITORY/commits/$KERO_SOURCE_COMMIT/check-runs" \
+              --jq '[.check_runs[] | select(.name == "CI Gate" and .app.slug == "github-actions")][0].conclusion // ""'
+          )"
+          if [ "$conclusion" != "success" ]; then
+            echo "No successful CI Gate found for $KERO_SOURCE_COMMIT" >&2
+            exit 1
+          fi
+
+  validate-release:
+    name: Validate Release
+    needs: publish-request
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+    steps:
+      - name: Check out immutable source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.publish-request.outputs.source-commit }}
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+      - name: Set up Lua
+        run: sudo apt-get update && sudo apt-get install --yes lua5.4
+      - name: Validate authored release and sequence
+        id: release
+        run: lua5.4 .github/scripts/release.lua "${{ inputs.version }}"
+
+  build-publication:
+    name: Build Publication
+    needs: [publish-request, verify-source-ci, validate-release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out immutable source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.publish-request.outputs.source-commit }}
+          persist-credentials: false
+      - name: Set up repository tooling
+        run: sudo apt-get update && sudo apt-get install --yes lua5.4 pandoc
       - name: Build generated repository
         uses: ./.github/actions/build-repo
         with:
           channel: ${{ inputs.channel }}
           destination: ${{ runner.temp }}/kero-publication
           version: ${{ inputs.version }}
-          source-commit: ${{ steps.source.outputs.commit }}
+          source-commit: ${{ needs.publish-request.outputs.source-commit }}
+      - name: Upload publication artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: publication-${{ needs.publish-request.outputs.source-commit }}
+          path: ${{ runner.temp }}/kero-publication
+          if-no-files-found: error
 
+  publish:
+    name: Publish ${{ inputs.channel }}
+    needs: [publish-request, validate-release, build-publication]
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - name: Check out immutable source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.publish-request.outputs.source-commit }}
+          persist-credentials: false
+      - name: Set up publication tooling
+        run: sudo apt-get update && sudo apt-get install --yes lua5.4
+      - name: Download publication artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: publication-${{ needs.publish-request.outputs.source-commit }}
+          path: ${{ runner.temp }}/kero-publication
+      - name: Verify publication identity
+        env:
+          KERO_CHANNEL: ${{ inputs.channel }}
+          KERO_VERSION: ${{ inputs.version }}
+          KERO_SOURCE_COMMIT: ${{ needs.publish-request.outputs.source-commit }}
+        run: |
+          expected="channel = \"$KERO_CHANNEL\"
+          version = \"$KERO_VERSION\"
+          source = \"$KERO_SOURCE_COMMIT\""
+          actual="$(cat "$RUNNER_TEMP/kero-publication/publication.toml")"
+          if [ "$actual" != "$expected" ]; then
+            echo "Publication artifact identity does not match the request" >&2
+            exit 1
+          fi
       - name: Create Frogge publication token
         id: frogge
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.0.0
@@ -83,29 +158,20 @@ jobs:
           repositories: kero
           permission-contents: write
           permission-administration: write
-
       - name: Configure release signing
-        shell: bash
         env:
           KERO_GPG_KEY_ID: ${{ vars.KERO_GPG_KEY_ID }}
           KERO_GPG_VERIFICATION_KEYS: ${{ vars.KERO_GPG_VERIFICATION_KEYS }}
           KERO_GPG_PRIVATE_KEY: ${{ secrets.KERO_GPG_PRIVATE_KEY }}
           KERO_GPG_PASSPHRASE: ${{ secrets.KERO_GPG_PASSPHRASE }}
         run: |
-          for name in \
-            KERO_GPG_KEY_ID \
-            KERO_GPG_VERIFICATION_KEYS \
-            KERO_GPG_PRIVATE_KEY \
-            KERO_GPG_PASSPHRASE
-          do
+          for name in KERO_GPG_KEY_ID KERO_GPG_VERIFICATION_KEYS KERO_GPG_PRIVATE_KEY KERO_GPG_PASSPHRASE; do
             if [ -z "${!name:-}" ]; then
               echo "Missing protected release value: $name" >&2
               exit 1
             fi
           done
-
           expected="${KERO_GPG_KEY_ID#0x}"
-          
           if [[ ! "$expected" =~ ^[0-9A-F]{40}$ ]]; then
             echo "KERO_GPG_KEY_ID must be a full 40-character fingerprint" >&2
             exit 1
@@ -118,7 +184,6 @@ jobs:
             exit 1
           fi
           wrapper="$RUNNER_TEMP/gpg-wrapper"
-          # shellcheck disable=SC2016 # Preserve variables for the generated wrapper.
           printf '%s\n' \
             '#!/usr/bin/env bash' \
             'args=(--batch --yes --pinentry-mode loopback)' \
@@ -131,7 +196,6 @@ jobs:
           git config --global gpg.program "$wrapper"
           git config --global commit.gpgsign true
           git config --global tag.gpgSign true
-
       - name: Publish generated repository
         uses: ./.github/actions/publish
         env:
@@ -141,7 +205,7 @@ jobs:
         with:
           channel: ${{ inputs.channel }}
           version: ${{ inputs.version }}
-          source-commit: ${{ steps.source.outputs.commit }}
+          source-commit: ${{ needs.publish-request.outputs.source-commit }}
           payload: ${{ runner.temp }}/kero-publication
 
   refresh-pages:
