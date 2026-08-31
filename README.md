@@ -10,16 +10,33 @@ and `stable` branches are never edited directly.
 - `i18n/` owns the ordered locale registry and translation catalogs.
 - `pages/` owns the GitHub Pages templates and build system.
 - `repo/` owns the generated public-repository projection.
-- `.github/actions/` owns GitHub-specific Lua operations.
+- `.github/actions/` owns reusable GitHub capabilities and the privileged
+  publisher.
+- `.github/scripts/` owns single-workflow validation entrypoints.
+- `.github/tests/` owns workflow and action-wiring contracts.
 - `.github/workflows/` composes those operations into GitHub workflows.
 
 Organization-wide GitHub templates and community defaults belong in the
 separate `kero-net/.github` repository.
 
-Run repository validation with:
+Run repository-contract validation with:
 
 ```bash
-lua5.4 .github/actions/validate/main.lua
+lua5.4 .github/scripts/repository-contracts.lua
+git diff --check
+```
+
+Run the independently owned Lua test families with:
+
+```bash
+lua5.4 i18n/validate.lua
+lua5.4 releases/tests/id.lua
+lua5.4 releases/tests/records.lua
+lua5.4 releases/tests/sequence.lua
+lua5.4 .github/actions/publish/tests/policy.lua
+lua5.4 .github/actions/publish/tests/preflight.lua
+lua5.4 .github/tests/workflows.lua
+lua5.4 .github/scripts/actionlint.lua
 ```
 
 Build a local Pages preview with:

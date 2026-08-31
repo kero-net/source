@@ -1,0 +1,45 @@
+local function read(path)
+  local file = assert(io.open(path, "r"))
+  local value = file:read("*a")
+  file:close()
+  return value
+end
+
+local publish = read(".github/workflows/release.yml")
+assert(publish:match("version:\n%s+description: Authored release to publish%.\n%s+required: true\n%s+type: string"))
+assert(publish:match("actions/create%-github%-app%-token@bcd2ba49218906704ab6c1aa796996da409d3eb1"))
+assert(publish:match("client%-id: %${{ vars%.KERO_RELEASE_APP_CLIENT_ID }}"))
+assert(publish:match("private%-key: %${{ secrets%.KERO_RELEASE_APP_PRIVATE_KEY }}"))
+assert(publish:match("owner: kero%-net"))
+assert(publish:match("repositories: kero"))
+assert(not publish:match("PERSONAL_"))
+assert(not publish:match("RELEASE_SIGNING_"))
+
+local unprivileged = assert(publish:match("(.-)\n  publish:\n"))
+assert(not unprivileged:match("KERO_RELEASE_APP_PRIVATE_KEY"))
+assert(not unprivileged:match("KERO_GPG_PRIVATE_KEY"))
+assert(not unprivileged:match("KERO_GPG_PASSPHRASE"))
+assert(not unprivileged:match("environment: release"))
+
+local privileged = assert(publish:match("\n  publish:\n(.-)\n  refresh%-pages:\n"))
+assert(privileged:match("environment: release"))
+assert(privileged:match("KERO_RELEASE_APP_PRIVATE_KEY"))
+assert(privileged:match("KERO_GPG_PRIVATE_KEY"))
+assert(privileged:match("uses: %./%.github/actions/publish"))
+
+local publisher = read(".github/actions/publish/main.lua")
+assert(publisher:match("gh release delete"))
+assert(not publisher:match("tar %-czf"))
+assert(not publisher:match('command%.quote%(archive%)'))
+
+local ci = read(".github/workflows/ci.yml")
+assert(ci:match("name: CI"))
+assert(ci:match("name: CI Gate"))
+assert(ci:match("name: Build Pages"))
+assert(ci:match("name: Build Repository"))
+assert(ci:match("name: Documentation Links"))
+assert(not ci:match("actions/validate"))
+
+local pages = read(".github/workflows/pages.yml")
+assert(not pages:match("\n  pull_request:"))
+assert(pages:match("\n  deploy:\n"))
