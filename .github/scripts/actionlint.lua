@@ -1,7 +1,5 @@
 #!/usr/bin/env lua
-local script = arg[0]:gsub("\\", "/")
-local root = script:match("^(.*)/%.github/actions/validate/actionlint%.lua$") or "."
-package.path = root .. "/.github/actions/?.lua;" .. package.path
+package.path = "./.github/actions/?.lua;" .. package.path
 
 local command = require("lib.command")
 local filesystem = require("lib.filesystem")
@@ -15,33 +13,33 @@ local archive = tool_root .. "/" .. archive_name
 
 local supplied = os.getenv("ACTIONLINT_BIN")
 if supplied and supplied ~= "" then
-  local ok, message = command.run(root, "test -x " .. command.quote(supplied), true)
+  local ok, message = command.run(".", "test -x " .. command.quote(supplied), true)
   if not ok then io.stderr:write("ACTIONLINT_BIN is not executable\n"); os.exit(1) end
-  ok, message = command.run(root, command.quote(supplied) .. " -color")
+  ok, message = command.run(".", command.quote(supplied) .. " -color")
   if not ok then io.stderr:write(message .. "\n"); os.exit(1) end
   os.exit(0)
 end
 
-local ok, message = command.run(root, "mkdir -p " .. command.quote(tool_root), true)
+local ok, message = command.run(".", "mkdir -p " .. command.quote(tool_root), true)
 if not ok then io.stderr:write(message .. "\n"); os.exit(1) end
 
-if not command.run(root, "test -x " .. command.quote(binary), true) then
+if not command.run(".", "test -x " .. command.quote(binary), true) then
   local url = "https://github.com/rhysd/actionlint/releases/download/v" .. version .. "/" .. archive_name
-  ok, message = command.run(root,
+  ok, message = command.run(".",
     "curl --fail --location --silent --show-error " .. command.quote(url) .. " --output " .. command.quote(archive))
   if not ok then io.stderr:write(message .. "\n"); os.exit(1) end
 
   local checksum = tool_root .. "/actionlint.sha256"
-  local wrote, write_error = filesystem.write(root .. "/" .. checksum, expected .. "  " .. archive .. "\n")
+  local wrote, write_error = filesystem.write("./" .. checksum, expected .. "  " .. archive .. "\n")
   if not wrote then io.stderr:write(write_error .. "\n"); os.exit(1) end
 
-  ok, message = command.run(root, "sha256sum --check --strict " .. command.quote(checksum))
+  ok, message = command.run(".", "sha256sum --check --strict " .. command.quote(checksum))
   if not ok then io.stderr:write(message .. "\n"); os.exit(1) end
-  ok, message = command.run(root,
+  ok, message = command.run(".",
     "tar -xzf " .. command.quote(archive) .. " -C " .. command.quote(tool_root) .. " actionlint"
       .. " && chmod 700 " .. command.quote(binary))
   if not ok then io.stderr:write(message .. "\n"); os.exit(1) end
 end
 
-ok, message = command.run(root, command.quote(binary) .. " -color")
+ok, message = command.run(".", command.quote(binary) .. " -color")
 if not ok then io.stderr:write(message .. "\n"); os.exit(1) end
