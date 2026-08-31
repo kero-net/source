@@ -1,4 +1,4 @@
-name: Validate
+name: CI
 
 on:
   workflow_dispatch:
@@ -14,44 +14,142 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  repository:
+  repository-contracts:
     name: Repository Contracts
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
-          fetch-tags: true
           persist-credentials: false
-
-      - name: Set up repository tooling
-        run: sudo apt-get update && sudo apt-get install --yes groff lua5.4 pandoc
-
+      - name: Set up Lua
+        run: sudo apt-get update && sudo apt-get install --yes lua5.4
       - name: Validate source branch
         uses: ./.github/actions/branches
         with:
           branch: ${{ github.event.pull_request.base.ref || github.ref_name }}
           kind: source
+      - name: Validate repository shape
+        run: lua5.4 .github/scripts/repository-contracts.lua
+      - name: Validate Git whitespace
+        run: git diff --check
 
-      - name: Validate source
-        uses: ./.github/actions/validate
-
-      - name: Validate GitHub Actions
-        run: lua5.4 .github/actions/validate/actionlint.lua
-
-  links:
-    name: Documentation Links
+  rust:
+    name: Rust
+    needs: repository-contracts
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Check formatting
+        run: cargo fmt --manifest-path code/Cargo.toml --all --check
+      - name: Run Clippy
+        run: cargo clippy --manifest-path code/Cargo.toml --all-targets --all-features -- -D warnings
+      - name: Run tests
+        run: cargo test --manifest-path code/Cargo.toml --all-targets --locked
 
-      - name: Set up documentation tooling
+  github-actions:
+    name: GitHub Actions
+    needs: repository-contracts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Lua
+        run: sudo apt-get update && sudo apt-get install --yes lua5.4
+      - name: Parse automation Lua
+        run: find .github -name '*.lua' -print0 | xargs -0 -n1 luac5.4 -p
+      - name: Test workflow contracts
+        run: lua5.4 .github/tests/workflows.lua
+      - name: Validate actions and workflows
+        run: lua5.4 .github/scripts/actionlint.lua
+
+  documentation:
+    name: Documentation
+    needs: repository-contracts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up groff
+        run: sudo apt-get update && sudo apt-get install --yes groff
+      - name: Validate manpage
+        run: groff -z -mandoc code/man/kero.1
+
+  localization:
+    name: Localization
+    needs: repository-contracts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Lua
+        run: sudo apt-get update && sudo apt-get install --yes lua5.4
+      - name: Validate localization
+        run: lua5.4 i18n/validate.lua
+
+  release-system:
+    name: Release System
+    needs: repository-contracts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Lua
+        run: sudo apt-get update && sudo apt-get install --yes lua5.4
+      - name: Test release IDs
+        run: lua5.4 releases/tests/id.lua
+      - name: Test release records
+        run: lua5.4 releases/tests/records.lua
+      - name: Test release sequencing
+        run: lua5.4 releases/tests/sequence.lua
+      - name: Test publication policy
+        run: lua5.4 .github/actions/publish/tests/policy.lua
+      - name: Test publisher preflight
+        run: lua5.4 .github/actions/publish/tests/preflight.lua
+
+  build-pages:
+    name: Build Pages
+    needs: localization
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Pages tooling
         run: sudo apt-get update && sudo apt-get install --yes lua5.4 pandoc
+      - name: Build Pages
+        uses: ./.github/actions/build-pages
+        with:
+          destination: ${{ runner.temp }}/kero-pages
+      - name: Upload Pages validation artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ci-pages
+          path: ${{ runner.temp }}/kero-pages
 
+  build-repository:
+    name: Build Repository
+    needs: [localization, release-system]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up repository tooling
+        run: sudo apt-get update && sudo apt-get install --yes lua5.4 pandoc
       - name: Build generated repository
         uses: ./.github/actions/build-repo
         with:
@@ -59,12 +157,27 @@ jobs:
           destination: ${{ runner.temp }}/kero-repository
           version: unreleased
           source-commit: ${{ github.event.pull_request.head.sha || github.sha }}
-
-      - name: Build Pages
-        uses: ./.github/actions/build-pages
+      - name: Upload repository validation artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          destination: ${{ runner.temp }}/kero-pages
+          name: ci-repository
+          path: ${{ runner.temp }}/kero-repository
 
+  documentation-links:
+    name: Documentation Links
+    needs: [build-pages, build-repository]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Pages artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: ci-pages
+          path: ${{ runner.temp }}/kero-pages
+      - name: Download repository artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: ci-repository
+          path: ${{ runner.temp }}/kero-repository
       - name: Check links
         uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
         with:
@@ -74,3 +187,61 @@ jobs:
             "${{ runner.temp }}/kero-repository/**/*.md"
             "${{ runner.temp }}/kero-pages/**/*.html"
           fail: false
+
+  dependency-review:
+    name: Dependency Review
+    if: github.event_name == 'pull_request'
+    needs: repository-contracts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Lua
+        run: sudo apt-get update && sudo apt-get install --yes lua5.4
+      - name: Validate dependency inputs
+        run: lua5.4 .github/scripts/dependency-inputs.lua
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: moderate
+          deny-licenses: GPL-3.0, AGPL-3.0
+
+  ci-gate:
+    name: CI Gate
+    if: always()
+    needs:
+      - repository-contracts
+      - rust
+      - github-actions
+      - documentation
+      - localization
+      - release-system
+      - build-pages
+      - build-repository
+      - documentation-links
+      - dependency-review
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require successful CI jobs
+        env:
+          KERO_JOB_RESULTS: ${{ toJSON(needs) }}
+          KERO_EVENT_NAME: ${{ github.event_name }}
+        run: |
+          failures="$(
+            jq -r --arg event "$KERO_EVENT_NAME" '
+              to_entries[]
+              | select(
+                  .value.result != "success"
+                  and not (.key == "dependency-review" and $event != "pull_request" and .value.result == "skipped")
+                )
+              | "\(.key): \(.value.result)"
+            ' <<<"$KERO_JOB_RESULTS"
+          )"
+          if [ -n "$failures" ]; then
+            echo "Required CI jobs did not succeed:"
+            echo "$failures"
+            exit 1
+          fi
+          echo "All required CI jobs succeeded"
