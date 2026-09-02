@@ -184,6 +184,7 @@ jobs:
             exit 1
           fi
           wrapper="$RUNNER_TEMP/gpg-wrapper"
+          # shellcheck disable=SC2016 # Expand these variables when the generated wrapper runs.
           printf '%s\n' \
             '#!/usr/bin/env bash' \
             'args=(--batch --yes --pinentry-mode loopback)' \
