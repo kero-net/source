@@ -2,7 +2,7 @@ use crate::canonical;
 use crate::policy::{AuthorizationRequest, PureAuthorizationResult};
 use crate::result::Authorization;
 use chrono::{DateTime, Duration, SecondsFormat, Utc};
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::Sha256;
