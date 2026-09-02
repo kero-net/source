@@ -234,7 +234,7 @@ jobs:
               to_entries[]
               | select(
                   .value.result != "success"
-                  and not (.key == "dependency-review" and $event != "pull_request" and .value.result == "skipped")
+                  and ((.key == "dependency-review" and $event != "pull_request" and .value.result == "skipped") | not)
                 )
               | "\(.key): \(.value.result)"
             ' <<<"$KERO_JOB_RESULTS"
