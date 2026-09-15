@@ -1,16 +1,13 @@
 [hero.tagline.values]
-en-US = "Linux-first authorization and bounded enforcement, built in Rust."
-ja-JP = "Rust で構築された、Linux 向けの認可と境界付き強制適用。"
+en-US = "A persistent, project-attached knowledge environment."
+ja-JP = "プロジェクトに接続する永続的な知識環境。"
 
-[navigation.features.values]
-en-US = "Features"
-ja-JP = "機能"
-[navigation.quick_start.values]
-en-US = "Quick Start"
-ja-JP = "クイックスタート"
-[navigation.policy_model.values]
-en-US = "Global + Project Policy"
-ja-JP = "グローバル＋プロジェクトポリシー"
+[navigation.direction.values]
+en-US = "Direction"
+ja-JP = "方向性"
+[navigation.architecture.values]
+en-US = "Architecture"
+ja-JP = "アーキテクチャ"
 [navigation.status.values]
 en-US = "Status"
 ja-JP = "状態"
@@ -21,123 +18,58 @@ ja-JP = "開発"
 en-US = "Project"
 ja-JP = "プロジェクト"
 
-[features.heading.values]
-en-US = "Features"
-ja-JP = "機能"
-[features.independent_results.values]
-en-US = "Keeps authorization, artifact verification, runtime capability, enforcement, and execution as separate results."
-ja-JP = "認可、成果物検証、実行能力、強制適用、実行結果を別々に扱います。"
-[features.immutable_artifacts.values]
-en-US = "Verifies immutable and replayable Layer 2 decision artifacts without re-deciding policy."
-ja-JP = "ポリシーを再判断せず、不変で再現可能な Layer 2 判断成果物を検証します。"
-[features.linux_boundaries.values]
-en-US = "Targets explicit Linux enforcement boundaries with auditable threat models."
-ja-JP = "監査可能な脅威モデルを備えた明示的な Linux 強制境界を対象とします。"
-[features.rust_backend.values]
-en-US = "Uses a low-overhead Rust backend; optional web tooling remains outside the trusted enforcement core."
-ja-JP = "低負荷な Rust バックエンドを使用し、任意の Web ツールを信頼された強制適用コアから分離します。"
+[direction.heading.values]
+en-US = "Knowledge-system direction"
+ja-JP = "知識システムの方向性"
+[direction.introduction.values]
+en-US = "KERO groups heterogeneous information sources into structured machine knowledge while preserving their distinct identity and provenance. Humans manage sources; KERO manages compilation."
+ja-JP = "KERO は異種の情報源を、個別の識別情報と来歴を保ったまま構造化された機械向け知識にまとめます。人間が情報源を管理し、KERO がコンパイルを管理します。"
+[direction.mounts.values]
+en-US = "Knowledge mounts attach files, directories, repositories, structured data, remote snapshots, and other KERO sets to one project."
+ja-JP = "知識マウントは、ファイル、ディレクトリ、リポジトリ、構造化データ、リモートスナップショット、他の KERO セットを一つのプロジェクトに接続します。"
+[direction.provenance.values]
+en-US = "Claims remain attributable to exact source revisions and regions; disagreement is preserved instead of overwritten."
+ja-JP = "主張は正確な情報源のリビジョンと領域まで追跡でき、不一致は上書きされず保持されます。"
+[direction.machine_first.values]
+en-US = "Human-readable sources compile into semantic IR and deterministic machine-oriented representations."
+ja-JP = "人間が読める情報源を、セマンティック IR と決定論的な機械向け表現にコンパイルします。"
+[direction.project_state.values]
+en-US = "CLI, IDE, and future GUI adapters share one project, mount, compiler, status, query, and projection model."
+ja-JP = "CLI、IDE、将来の GUI アダプターは、一つのプロジェクト、マウント、コンパイラー、状態、クエリ、投影モデルを共有します。"
 
-[quick_start.heading.values]
-en-US = "Quick Start"
-ja-JP = "クイックスタート"
-[quick_start.build_cli.heading.values]
-en-US = "1. Build the current CLI"
-ja-JP = "1. 現在の CLI をビルドする"
-[quick_start.build_cli.platform_support.values]
-en-US = "KERO currently targets Linux. Windows binaries and Flatpak packaging are planned for later; build from source on Ubuntu, Debian, or Arch for now."
-ja-JP = "現在 KERO は Linux を対象としています。Windows バイナリと Flatpak パッケージは今後追加する予定です。現時点では Ubuntu、Debian、または Arch でソースからビルドしてください。"
-[quick_start.build_cli.prerequisites_intro.values]
-en-US = "Install Rust and the native build tools first:"
-ja-JP = "Rust とネイティブビルドツールを最初にインストールします。"
-[quick_start.build_cli.build_intro.values]
-en-US = "Run the Rust commands from the repository's code directory:"
-ja-JP = "リポジトリの src ディレクトリで Rust コマンドを実行します。"
-[quick_start.build_cli.path_note.values]
-en-US = "Ensure HOME/.local/bin is on PATH. On Fish, use the absolute /usr/bin/install because some systems define install as a package-manager function."
-ja-JP = "HOME/.local/bin が PATH に含まれていることを確認します。Fish では、一部の環境で install がパッケージマネージャー関数として定義されるため、絶対パスの /usr/bin/install を使ってください。"
-
-[quick_start.global_environment.heading.values]
-en-US = "2. Choose the global environment"
-ja-JP = "2. グローバル環境を選択する"
-[quick_start.global_environment.intro.values]
-en-US = "Choose the global KERO environment once. HOME/.kero is the normal default; use --root when the data belongs elsewhere."
-ja-JP = "グローバル KERO 環境を一度選択します。通常の既定値は HOME/.kero です。別の場所に保存する場合は --root を使います。"
-[quick_start.global_environment.default_intro.values]
-en-US = "Use the normal default:"
-ja-JP = "通常の既定値を使用します。"
-[quick_start.global_environment.custom_intro.values]
-en-US = "Or choose another location explicitly:"
-ja-JP = "または、別の場所を明示的に選択します。"
-[quick_start.global_environment.storage_note.values]
-en-US = "The selected location is recorded in machine-local XDG configuration and is never committed into repositories."
-ja-JP = "選択した場所はマシンローカルの XDG 設定に記録され、リポジトリにはコミットされません。"
-
-[quick_start.initialize_repository.heading.values]
-en-US = "3. Initialize a repository"
-ja-JP = "3. リポジトリを初期化する"
-[quick_start.initialize_repository.layout_intro.values]
-en-US = "KERO creates one top-level integration directory. Local knowledge and runtime state remain ignored."
-ja-JP = "KERO が作成するトップレベルの統合ディレクトリは一つだけです。ローカル知識と実行時状態は無視されます。"
-
-[quick_start.minimal_policy.heading.values]
-en-US = "4. Define a minimal standalone policy"
-ja-JP = "4. 最小のスタンドアロンポリシーを定義する"
-[quick_start.minimal_policy.records_intro.values]
-en-US = "The generated environment treats .kero/policy/records.toml as this repository's origin policy. Add a principal, role, statement, and assignment:"
-ja-JP = "生成された環境では .kero/policy/records.toml をこのリポジトリの origin ポリシーとして扱います。principal、role、statement、assignment を追加します。"
-[quick_start.minimal_policy.request_intro.values]
-en-US = "Create .kero/tests/write-source.toml:"
-ja-JP = ".kero/tests/write-source.toml を作成します。"
-[quick_start.minimal_policy.authorize_intro.values]
-en-US = "Resolve it using the .kero defaults:"
-ja-JP = ".kero の既定値を使って解決します。"
-[quick_start.minimal_policy.replay_intro.values]
-en-US = "The command returns a pure ALLOW or DENY result and stores an immutable snapshot. Replay with the returned snapshot path and digest to prove the result no longer depends on mutable TOML:"
-ja-JP = "コマンドは純粋な ALLOW または DENY を返し、不変スナップショットを保存します。返されたパスと digest で再実行し、結果が変更可能な TOML に依存しないことを確認します。"
-
-[policy_model.heading.values]
-en-US = "Shared Global and Project-Specific Policy"
-ja-JP = "共有グローバルポリシーとプロジェクト固有ポリシー"
-[policy_model.authority_intro.values]
-en-US = "KERO does not merge files merely because one is called global and another is inside a repository. Authority comes from policy-source records in one environment."
-ja-JP = "KERO は、ファイル名が global であることやリポジトリ内にあることだけを理由にポリシーを統合しません。権限は一つの環境に定義された policy source レコードから生じます。"
-[policy_model.deny_precedence.values]
-en-US = "An applicable explicit deny dominates applicable allows. Missing authority defaults to DENY; role names and session fields cannot manufacture authority."
-ja-JP = "適用可能な明示的 deny は allow より優先されます。権限がなければ DENY となり、role 名や session フィールドから権限を作ることはできません。"
-[policy_model.record_locations.values]
-en-US = "Global records live under the selected global KERO environment, while project records remain under .kero/policy. Pass every record file explicitly."
-ja-JP = "グローバルレコードは選択したグローバル KERO 環境に置き、プロジェクトレコードは .kero/policy に置きます。すべてのレコードファイルを明示的に渡します。"
-[policy_model.trust_modes.values]
-en-US = "Use origin for initial trusted authority, delegated for authority bounded by another source, and restrictive for policy that can only narrow inherited authority."
-ja-JP = "最初の信頼された権限には origin、別の source に制限された権限には delegated、継承権限を狭めるだけのポリシーには restrictive を使います。"
+[architecture.heading.values]
+en-US = "Architecture"
+ja-JP = "アーキテクチャ"
+[architecture.pipeline_intro.values]
+en-US = "KERO separates project-facing mounts, provenance-facing sources, meaning-facing semantic IR, determinism-facing canonicalization, and storage-facing encoding."
+ja-JP = "KERO は、プロジェクト向けマウント、来歴向け情報源、意味向けセマンティック IR、決定性向け正規化、保存向けエンコーディングを分離します。"
+[architecture.boundary.values]
+en-US = "Canonical knowledge preserves explicit and derived origins. Indexes, summaries, embeddings, caches, and context projections are removable derived artifacts."
+ja-JP = "正規知識は明示的および派生した起源を保持します。インデックス、要約、埋め込み、キャッシュ、コンテキスト投影は削除可能な派生成果物です。"
 
 [status.heading.values]
 en-US = "Status"
 ja-JP = "状態"
-[status.channel_notice.values]
-en-US = "KERO is distributed through canary, beta, and stable channels. An ENFORCED result applies only to its named boundary and threat model."
-ja-JP = "KERO は canary、beta、stable チャネルで配布されます。ENFORCED は指定された境界と脅威モデルにのみ適用されます。"
+[status.pre_alpha.values]
+en-US = "KERO is pre-alpha and is being rebuilt around its knowledge-system architecture. No stable product commands or storage formats exist yet."
+ja-JP = "KERO はプレアルファであり、知識システムのアーキテクチャを中心に再構築中です。安定した製品コマンドや保存形式はまだありません。"
+[status.cli.values]
+en-US = "The current Rust workspace is a clean foundation. Build it and inspect the placeholder CLI while the typed project and semantic APIs are implemented."
+ja-JP = "現在の Rust ワークスペースはクリーンな基盤です。型付きプロジェクト API とセマンティック API の実装中は、ビルドして仮の CLI を確認できます。"
 
 [development.heading.values]
 en-US = "Development"
 ja-JP = "開発"
-[development.consumer_setup.values]
-en-US = "Run kero project init in a consumer repository to create its single .kero integration directory."
-ja-JP = "利用するリポジトリで kero project init を実行すると、単一の .kero 統合ディレクトリが作成されます。"
 [development.validation.values]
-en-US = "Canonical development happens in kero-net/source. Run the Rust tests from code and see CONTRIBUTING.md for the full validation workflow."
-ja-JP = "正規の開発は kero-net/source で行います。Rust テストは code から実行し、完全な検証手順は CONTRIBUTING.md を参照してください。"
+en-US = "Canonical development happens in kero-net/source. The source repository generates the public channel branches."
+ja-JP = "正規の開発は kero-net/source で行い、ソースリポジトリから公開チャネルブランチを生成します。"
 
 [project.heading.values]
 en-US = "Project"
 ja-JP = "プロジェクト"
-[project.branch_ownership.values]
-en-US = "The kero-net/source repository is canonical. Automation owns the generated canary, beta, and stable branches in kero-net/kero."
-ja-JP = "kero-net/source リポジトリが正規です。kero-net/kero の canary、beta、stable ブランチは自動化によって生成されます。"
-
 [project.repository_topology.values]
-en-US = "KERO uses a separate authored repository at kero-net/source and a generated public repository at kero-net/kero. The public canary, beta, and stable branches are projections of an immutable source commit."
-ja-JP = "KERO は、作成元の kero-net/source と生成された公開リポジトリ kero-net/kero を分離します。公開される canary、beta、stable ブランチは、不変の source commit から生成されます。"
+en-US = "kero-net/source contains authored code and construction inputs. Automation projects reviewed commits into canary, beta, and stable branches of kero-net/kero."
+ja-JP = "kero-net/source には作成されたコードと構築入力が含まれます。自動化により、レビュー済みコミットを kero-net/kero の canary、beta、stable ブランチへ投影します。"
 
 [license.heading.values]
 en-US = "License"

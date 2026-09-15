@@ -1,8 +1,0 @@
-schema = "terminal-policy/request/v1"
-request_id = "request.decision.indeterminate-deny"
-principal = "principal.example"
-operation = "filesystem.write"
-targets = ["path:src/main.rs"]
-
-[session]
-id = "session.decision"

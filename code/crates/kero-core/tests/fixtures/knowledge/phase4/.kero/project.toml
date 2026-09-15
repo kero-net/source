@@ -1,0 +1,24 @@
+schema = "kero/project/v1alpha1"
+id = "phase4.fixture"
+
+[[mounts]]
+id = "architecture"
+source_id = "source.architecture"
+source = "architecture.md"
+kind = "local-file"
+importer = "kero.markdown"
+media_type = "text/markdown"
+enabled = true
+required = true
+display_order = 0
+
+[[mounts]]
+id = "operations"
+source_id = "source.operations"
+source = "operations.md"
+kind = "local-file"
+importer = "kero.markdown"
+media_type = "text/markdown"
+enabled = true
+required = true
+display_order = 1

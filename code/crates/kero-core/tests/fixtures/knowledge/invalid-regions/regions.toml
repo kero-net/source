@@ -1,0 +1,14 @@
+[[regions]]
+name = "inverted"
+start = 9
+end = 2
+
+[[regions]]
+name = "outside-source"
+start = 0
+end = 999
+
+[[regions]]
+name = "inside-utf8-codepoint"
+start = 2
+end = 3
