@@ -1,0 +1,10 @@
+schema = "kero/project/v1alpha1"
+id = "fixture.digest"
+
+[[mounts]]
+id = "guide"
+source_id = "source.guide"
+source = "docs/guide.md"
+kind = "local-file"
+display_order = 0
+expected_digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000"

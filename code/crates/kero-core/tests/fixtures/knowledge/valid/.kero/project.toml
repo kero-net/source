@@ -1,0 +1,77 @@
+schema = "kero/project/v1alpha1"
+id = "fixture.knowledge"
+
+[extensions]
+owner = "fixture-team"
+priority = 7
+
+[[mounts]]
+id = "guide"
+source_id = "source.guide"
+source = "docs/guide.md"
+kind = "local-file"
+media_type = "text/markdown; charset=utf-8"
+enabled = true
+required = true
+display_order = 0
+
+[mounts.extensions]
+label = "Project guide"
+
+[[mounts]]
+id = "dataset"
+source_id = "source.dataset"
+source = "data/records.json"
+kind = "structured-json"
+enabled = true
+required = true
+display_order = 1
+
+[[mounts]]
+id = "duplicate-one"
+source_id = "source.duplicate-one"
+source = "docs/duplicate-one.md"
+kind = "local-file"
+enabled = true
+required = true
+display_order = 2
+
+[[mounts]]
+id = "duplicate-two"
+source_id = "source.duplicate-two"
+source = "docs/duplicate-two.md"
+kind = "local-file"
+enabled = true
+required = true
+display_order = 3
+
+[[mounts]]
+id = "missing"
+source_id = "source.missing"
+source = "docs/missing.md"
+kind = "local-file"
+enabled = true
+required = true
+display_order = 4
+
+[[mounts]]
+id = "disabled"
+source_id = "source.disabled"
+source = "docs/disabled.md"
+kind = "local-file"
+enabled = false
+required = false
+display_order = 5
+
+[[mounts]]
+id = "remote"
+source_id = "source.remote"
+source = "https://example.invalid/specification"
+kind = "remote-snapshot"
+importer = "example.remote"
+enabled = true
+required = false
+display_order = 6
+
+[mounts.acquisition]
+pin = "example-revision"

@@ -2,33 +2,31 @@
 
 {{ l10n:getting-started.introduction }}
 
-{{ l10n:getting-started.global }}
+{{ l10n:getting-started.current_state }}
 
 ```bash
-kero global init
-# or: kero global init --root /chosen/path/.kero
-kero knowledge path global --plain
+git clone https://github.com/kero-net/kero.git
+cd kero/code
+cargo test --all-targets --all-features --locked
+cargo run -p kero-cli -- --help
 ```
 
-```bash
-kero project init
-```
-
-{{ l10n:getting-started.layout }}
+{{ l10n:getting-started.project_model }}
 
 ```text
-.kero/
-├── kero.toml
-├── knowledge.toml
-├── knowledge/
-│   ├── shared/
-│   └── local/
-├── policy/
-│   ├── environment.toml
-│   └── records.toml
-├── checklists/
-├── tests/
-└── state/
+repository/
+├── .git/
+├── .kero/        project declaration and KERO-managed state
+├── docs/         possible mounted knowledge source
+└── src/
 ```
 
-{{ l10n:getting-started.state }}
+{{ l10n:getting-started.future_flow }}
+
+```text
+kero init
+  → review discovered source suggestions
+  → attach knowledge mounts
+  → KERO maintains compiled knowledge
+  → inspect status, query, trace, and project context
+```

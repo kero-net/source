@@ -3,8 +3,8 @@ en-US = "KERO Documentation"
 ja-JP = "KERO ドキュメント"
 
 [overview.introduction.values]
-en-US = "This documentation defines KERO's authorization, verification, capability, and Linux enforcement contracts."
-ja-JP = "このドキュメントでは、KERO の認可、検証、実行能力、Linux 強制適用の契約を定義します。"
+en-US = "This documentation follows KERO's project-attached knowledge-system architecture: mounts, sources, provenance, semantic IR, deterministic compilation, queries, and bounded context projection."
+ja-JP = "このドキュメントは、マウント、情報源、来歴、セマンティック IR、決定論的コンパイル、クエリ、制限付きコンテキスト投影から成る KERO のプロジェクト接続型知識システムアーキテクチャに従います。"
 
 [navigation.getting_started.values]
 en-US = "Getting Started"

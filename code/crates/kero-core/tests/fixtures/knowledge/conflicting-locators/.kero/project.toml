@@ -1,0 +1,16 @@
+schema = "kero/project/v1alpha1"
+id = "fixture.conflict"
+
+[[mounts]]
+id = "one"
+source_id = "source.one"
+source = "docs/guide.md"
+kind = "local-file"
+display_order = 0
+
+[[mounts]]
+id = "two"
+source_id = "source.two"
+source = "docs/./guide.md"
+kind = "local-file"
+display_order = 1
