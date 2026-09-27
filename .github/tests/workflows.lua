@@ -12,6 +12,12 @@ assert(ci:match("name: Publication Decision"))
 assert(ci:match("uses: %./%.github/workflows/release%.yml"))
 assert(ci:match("rustup target add wasm32%-wasip1"))
 
+local greetings = read(".github/workflows/greetings.yml")
+assert(greetings:match("name: First Interaction"))
+assert(greetings:match("actions/github%-script@ed597411d8f924073f98dfc5c65a23a2325f34cd"))
+assert(greetings:match("state: 'all'"))
+assert(greetings:match("candidate%.user%?%.login === pullRequest%.user%.login"))
+
 local publication = read(".github/workflows/release.yml")
 assert(publication:match("name: Publication"))
 assert(publication:match("workflow_call:"))
