@@ -1,14 +1,14 @@
+use ed25519_dalek::{Signer, SigningKey};
 use kero_core::config::parse;
 use kero_core::host::native_input::{
     capture as capture_input, list as list_input, remove as remove_input,
 };
 use kero_core::host::native_repository::{
+    EnrollmentOutcome, EnvironmentFormat, MountState, OWNED_DIRECTORIES, RepositoryState,
     create_mount, enroll, initialize as initialize_repository, inspect, inspect_environment,
-    list_mounts, materialize_global_home, materialize_mount, refresh_mount, remove_mount, resolve_local,
-    resolve_mount, EnrollmentOutcome, EnvironmentFormat, MountState, RepositoryState,
-    sync_mount, OWNED_DIRECTORIES,
+    list_mounts, materialize_global_home, materialize_mount, refresh_mount, remove_mount,
+    resolve_local, resolve_mount, sync_mount,
 };
-use ed25519_dalek::{Signer, SigningKey};
 use kero_core::setup::Enrollment;
 use std::path::Path;
 use std::process::Command;
@@ -201,12 +201,14 @@ fn materialized_mount_copies_only_external_local_data_and_records_runtime_proven
     assert_eq!(provenance.files, 2);
     assert_eq!(provenance.source_format, "repository");
     assert_eq!(provenance.access, "read-only");
-    assert!(target
-        .mounts
-        .join("upstream")
-        .join("guides")
-        .join("intro.md")
-        .is_file());
+    assert!(
+        target
+            .mounts
+            .join("upstream")
+            .join("guides")
+            .join("intro.md")
+            .is_file()
+    );
     assert_eq!(
         std::fs::metadata(
             target
@@ -220,17 +222,21 @@ fn materialized_mount_copies_only_external_local_data_and_records_runtime_proven
         .unwrap(),
         expected_modified
     );
-    assert!(target
-        .mounts
-        .join("upstream")
-        .join("guides")
-        .join("policy.kst")
-        .is_file());
+    assert!(
+        target
+            .mounts
+            .join("upstream")
+            .join("guides")
+            .join("policy.kst")
+            .is_file()
+    );
     assert!(!target.data.join("guides").exists());
-    assert!(target
-        .directory
-        .join(".runtime/mounts/upstream.kst")
-        .is_file());
+    assert!(
+        target
+            .directory
+            .join(".runtime/mounts/upstream.kst")
+            .is_file()
+    );
     assert!(materialize_mount(&target, "upstream", &source_root).is_err());
     let mounts = list_mounts(&target).unwrap();
     assert_eq!(mounts.len(), 1);
@@ -377,16 +383,25 @@ fn refresh_replaces_a_snapshot_and_publishes_kst_provenance() {
     let refreshed = refresh_mount(&target, "upstream").unwrap();
     assert_eq!(refreshed.files, 2);
     assert!(target.mounts.join("upstream/second.txt").is_file());
-    assert!(target.directory.join(".runtime/mounts/upstream.kst").is_file());
+    assert!(
+        target
+            .directory
+            .join(".runtime/mounts/upstream.kst")
+            .is_file()
+    );
 }
 
 #[test]
 fn refresh_repairs_legacy_json_provenance_to_kst() {
     let directory = tempfile::tempdir().unwrap();
-    let target_root = directory.path().join("target"); let source_root = directory.path().join("source");
-    std::fs::create_dir(&target_root).unwrap(); std::fs::create_dir(&source_root).unwrap();
-    git(&target_root, ["init"]); git(&source_root, ["init"]);
-    let target = initialize_repository(&target_root).unwrap(); let source = initialize_repository(&source_root).unwrap();
+    let target_root = directory.path().join("target");
+    let source_root = directory.path().join("source");
+    std::fs::create_dir(&target_root).unwrap();
+    std::fs::create_dir(&source_root).unwrap();
+    git(&target_root, ["init"]);
+    git(&source_root, ["init"]);
+    let target = initialize_repository(&target_root).unwrap();
+    let source = initialize_repository(&source_root).unwrap();
     std::fs::write(source.data.join("note.txt"), "one").unwrap();
     let record = materialize_mount(&target, "legacy", &source_root).unwrap();
     let runtime_mounts = target.directory.join(".runtime/mounts");
@@ -405,45 +420,89 @@ fn signed_pull_grant_refreshes_only_source_changes() {
     let directory = tempfile::tempdir().unwrap();
     let target_root = directory.path().join("target");
     let source_root = directory.path().join("source");
-    std::fs::create_dir(&target_root).unwrap(); std::fs::create_dir(&source_root).unwrap();
-    git(&target_root, ["init"]); git(&source_root, ["init"]);
+    std::fs::create_dir(&target_root).unwrap();
+    std::fs::create_dir(&source_root).unwrap();
+    git(&target_root, ["init"]);
+    git(&source_root, ["init"]);
     let target = initialize_repository(&target_root).unwrap();
     let source = initialize_repository(&source_root).unwrap();
     std::fs::write(source.data.join("note.txt"), "one").unwrap();
     let record = materialize_mount(&target, "upstream", &source_root).unwrap();
     let signer = SigningKey::from_bytes(&[7; 32]);
     let target_key = hex::encode([9_u8; 32]);
-    let expires = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs() + 60;
-    let payload = format!("mount=upstream\ntarget={target_key}\ndirection=pull\nbaseline={}\nexpires={expires}\n", record.baseline_sha256);
+    let expires = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
+        + 60;
+    let payload = format!(
+        "mount=upstream\ntarget={target_key}\ndirection=pull\nbaseline={}\nexpires={expires}\n",
+        record.baseline_sha256
+    );
     let signature = signer.sign(payload.as_bytes());
     std::fs::write(&source.config, format!("syncGrant upstream\n\ttargetKey {target_key}\n\tdirection pull\n\tbaseline {}\n\texpires {expires}\n\tsourceKey {}\n\tsignature {}\n", record.baseline_sha256, hex::encode(signer.verifying_key().to_bytes()), hex::encode(signature.to_bytes()))).unwrap();
     std::fs::write(source.data.join("note.txt"), "two").unwrap();
     let synchronized = sync_mount(&target, "upstream", &target_key).unwrap();
     assert_eq!(synchronized.status, "ready");
-    assert_eq!(std::fs::read_to_string(target.mounts.join("upstream/note.txt")).unwrap(), "two");
+    assert_eq!(
+        std::fs::read_to_string(target.mounts.join("upstream/note.txt")).unwrap(),
+        "two"
+    );
 }
 
 #[test]
 fn divergent_sync_marks_the_mount_conflicted_without_discarding_either_side() {
     let directory = tempfile::tempdir().unwrap();
-    let target_root = directory.path().join("target"); let source_root = directory.path().join("source");
-    std::fs::create_dir(&target_root).unwrap(); std::fs::create_dir(&source_root).unwrap();
-    git(&target_root, ["init"]); git(&source_root, ["init"]);
-    let target = initialize_repository(&target_root).unwrap(); let source = initialize_repository(&source_root).unwrap();
+    let target_root = directory.path().join("target");
+    let source_root = directory.path().join("source");
+    std::fs::create_dir(&target_root).unwrap();
+    std::fs::create_dir(&source_root).unwrap();
+    git(&target_root, ["init"]);
+    git(&source_root, ["init"]);
+    let target = initialize_repository(&target_root).unwrap();
+    let source = initialize_repository(&source_root).unwrap();
     std::fs::write(source.data.join("note.txt"), "baseline").unwrap();
     let record = materialize_mount(&target, "upstream", &source_root).unwrap();
-    let signer = SigningKey::from_bytes(&[8; 32]); let target_key = hex::encode([10_u8; 32]);
-    let expires = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs() + 60;
-    let payload = format!("mount=upstream\ntarget={target_key}\ndirection=bidirectional\nbaseline={}\nexpires={expires}\n", record.baseline_sha256);
+    let signer = SigningKey::from_bytes(&[8; 32]);
+    let target_key = hex::encode([10_u8; 32]);
+    let expires = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
+        + 60;
+    let payload = format!(
+        "mount=upstream\ntarget={target_key}\ndirection=bidirectional\nbaseline={}\nexpires={expires}\n",
+        record.baseline_sha256
+    );
     let signature = signer.sign(payload.as_bytes());
     std::fs::write(&source.config, format!("syncGrant upstream\n\ttargetKey {target_key}\n\tdirection bidirectional\n\tbaseline {}\n\texpires {expires}\n\tsourceKey {}\n\tsignature {}\n", record.baseline_sha256, hex::encode(signer.verifying_key().to_bytes()), hex::encode(signature.to_bytes()))).unwrap();
     std::fs::write(source.data.join("note.txt"), "source edit").unwrap();
     let local = target.mounts.join("upstream/note.txt");
-    let mut permissions = std::fs::metadata(&local).unwrap().permissions(); permissions.set_readonly(false); std::fs::set_permissions(&local, permissions).unwrap();
+    let mut permissions = std::fs::metadata(&local).unwrap().permissions();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        permissions.set_mode(0o600);
+    }
+    #[cfg(windows)]
+    #[allow(clippy::permissions_set_readonly_false)]
+    permissions.set_readonly(false);
+    std::fs::set_permissions(&local, permissions).unwrap();
     std::fs::write(&local, "local edit").unwrap();
-    assert!(sync_mount(&target, "upstream", &target_key).unwrap_err().to_string().contains("mount.sync-conflict"));
-    assert_eq!(list_mounts(&target).unwrap()[0].state, MountState::Conflicted);
-    assert_eq!(std::fs::read_to_string(source.data.join("note.txt")).unwrap(), "source edit");
+    assert!(
+        sync_mount(&target, "upstream", &target_key)
+            .unwrap_err()
+            .to_string()
+            .contains("mount.sync-conflict")
+    );
+    assert_eq!(
+        list_mounts(&target).unwrap()[0].state,
+        MountState::Conflicted
+    );
+    assert_eq!(
+        std::fs::read_to_string(source.data.join("note.txt")).unwrap(),
+        "source edit"
+    );
     assert_eq!(std::fs::read_to_string(local).unwrap(), "local edit");
 }
 
@@ -457,9 +516,11 @@ fn mount_listing_reports_incomplete_entries_without_hiding_them() {
 
     let mounts = list_mounts(&boundary).unwrap();
     assert_eq!(mounts.len(), 2);
-    assert!(mounts
-        .iter()
-        .all(|mount| mount.state == MountState::OutOfFormat));
+    assert!(
+        mounts
+            .iter()
+            .all(|mount| mount.state == MountState::OutOfFormat)
+    );
 }
 
 #[test]
@@ -479,12 +540,14 @@ fn explicit_knowledge_input_is_deterministic_local_and_removable() {
     let second = capture_input(&boundary, &source).unwrap();
     assert_eq!(first, second);
     assert_eq!(first.files, 2);
-    assert!(boundary
-        .data
-        .join("input")
-        .join(&first.id)
-        .join("content/nested/a.txt")
-        .is_file());
+    assert!(
+        boundary
+            .data
+            .join("input")
+            .join(&first.id)
+            .join("content/nested/a.txt")
+            .is_file()
+    );
     assert_eq!(list_input(&boundary).unwrap(), vec![first.clone()]);
     let manifest = std::fs::read_to_string(
         boundary
@@ -513,12 +576,14 @@ fn knowledge_input_identity_covers_empty_directories_and_detects_corruption() {
 
     let boundary = initialize_repository(&repository).unwrap();
     let first = capture_input(&boundary, &source).unwrap();
-    assert!(boundary
-        .data
-        .join("input")
-        .join(&first.id)
-        .join("content/empty")
-        .is_dir());
+    assert!(
+        boundary
+            .data
+            .join("input")
+            .join(&first.id)
+            .join("content/empty")
+            .is_dir()
+    );
 
     std::fs::write(source.join("record.txt"), "second").unwrap();
     let second = capture_input(&boundary, &source).unwrap();

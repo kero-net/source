@@ -1,10 +1,10 @@
 //! Release-1 repository boundary and ownership operations.
 
 use crate::config::{self, Node};
-use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use crate::host::{DataScope, KeroHost, LifecycleHost, ScopedPath};
 use crate::lifecycle;
 use crate::setup::Enrollment;
+use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs::{self, OpenOptions};
@@ -699,7 +699,10 @@ pub fn list_mounts(boundary: &RepositoryBoundary) -> Result<Vec<MountInfo>, Repo
                 ),
                 Some(record) if record.access == "read-write" => (
                     MountState::MaterializedReadWrite,
-                    format!("grant-authorized writable synchronization with {}", record.source_root.display()),
+                    format!(
+                        "grant-authorized writable synchronization with {}",
+                        record.source_root.display()
+                    ),
                 ),
                 Some(_) => (
                     MountState::OutOfFormat,
@@ -880,8 +883,14 @@ pub fn remove_mount(boundary: &RepositoryBoundary, mount: &str) -> Result<(), Re
     set_tree_readonly(&mount_path, false)?;
     fs::remove_dir_all(&mount_path)?;
     for extension in ["kst", "json"] {
-        let metadata = boundary.directory.join(RUNTIME_DIRECTORY).join("mounts").join(format!("{mount}.{extension}"));
-        if metadata.is_file() { fs::remove_file(metadata)?; }
+        let metadata = boundary
+            .directory
+            .join(RUNTIME_DIRECTORY)
+            .join("mounts")
+            .join(format!("{mount}.{extension}"));
+        if metadata.is_file() {
+            fs::remove_file(metadata)?;
+        }
     }
     Ok(())
 }
@@ -892,24 +901,47 @@ pub fn refresh_mount(
     boundary: &RepositoryBoundary,
     mount: &str,
 ) -> Result<MountProvenance, RepositoryError> {
-    let record = read_mount_provenance(boundary, mount)?
-        .ok_or_else(|| RepositoryError::NotFound(boundary.directory.join(RUNTIME_DIRECTORY).join("mounts").join(format!("{mount}.kst"))))?;
+    let record = read_mount_provenance(boundary, mount)?.ok_or_else(|| {
+        RepositoryError::NotFound(
+            boundary
+                .directory
+                .join(RUNTIME_DIRECTORY)
+                .join("mounts")
+                .join(format!("{mount}.kst")),
+        )
+    })?;
     let source_data = match record.source_format.as_str() {
         "repository" => record.source_root.join(".kero").join(DATA_DIRECTORY),
         "global-home" => record.source_root.join(DATA_DIRECTORY),
-        _ => return Err(RepositoryError::MountSource("mount provenance has an unsupported source format".into())),
+        _ => {
+            return Err(RepositoryError::MountSource(
+                "mount provenance has an unsupported source format".into(),
+            ));
+        }
     };
     let destination = boundary.mounts.join(mount);
-    if !destination.is_dir() { return Err(RepositoryError::NotFound(destination)); }
+    if !destination.is_dir() {
+        return Err(RepositoryError::NotFound(destination));
+    }
     let runtime = boundary.directory.join(RUNTIME_DIRECTORY);
     fs::create_dir_all(runtime.join("mount-staging"))?;
-    let backup = runtime.join("mount-staging").join(format!("{mount}.previous"));
-    if backup.exists() { return Err(RepositoryError::Exists(backup)); }
+    let backup = runtime
+        .join("mount-staging")
+        .join(format!("{mount}.previous"));
+    if backup.exists() {
+        return Err(RepositoryError::Exists(backup));
+    }
     let metadata = runtime.join("mounts").join(format!("{mount}.kst"));
     let prior_metadata = fs::read(&metadata).ok();
     set_tree_readonly(&destination, false)?;
     fs::rename(&destination, &backup)?;
-    match materialize_snapshot(boundary, mount, source_data, record.source_root.clone(), &record.source_format) {
+    match materialize_snapshot(
+        boundary,
+        mount,
+        source_data,
+        record.source_root.clone(),
+        &record.source_format,
+    ) {
         Ok(mut next) => {
             next.refresh_mode = record.refresh_mode;
             next.access = record.access;
@@ -942,18 +974,31 @@ pub fn mount_source_data(
     boundary: &RepositoryBoundary,
     mount: &str,
 ) -> Result<PathBuf, RepositoryError> {
-    let record = read_mount_provenance(boundary, mount)?
-        .ok_or_else(|| RepositoryError::NotFound(boundary.directory.join(RUNTIME_DIRECTORY).join("mounts").join(format!("{mount}.kst"))))?;
+    let record = read_mount_provenance(boundary, mount)?.ok_or_else(|| {
+        RepositoryError::NotFound(
+            boundary
+                .directory
+                .join(RUNTIME_DIRECTORY)
+                .join("mounts")
+                .join(format!("{mount}.kst")),
+        )
+    })?;
     match record.source_format.as_str() {
         "repository" => Ok(record.source_root.join(".kero").join(DATA_DIRECTORY)),
         "global-home" => Ok(record.source_root.join(DATA_DIRECTORY)),
-        _ => Err(RepositoryError::MountSource("mount provenance has an unsupported source format".into())),
+        _ => Err(RepositoryError::MountSource(
+            "mount provenance has an unsupported source format".into(),
+        )),
     }
 }
 
 /// Reads the disposable provenance for a named materialized mount.
-pub fn mount_provenance(boundary: &RepositoryBoundary, mount: &str) -> Result<MountProvenance, RepositoryError> {
-    read_mount_provenance(boundary, mount)?.ok_or_else(|| RepositoryError::NotFound(boundary.mounts.join(mount)))
+pub fn mount_provenance(
+    boundary: &RepositoryBoundary,
+    mount: &str,
+) -> Result<MountProvenance, RepositoryError> {
+    read_mount_provenance(boundary, mount)?
+        .ok_or_else(|| RepositoryError::NotFound(boundary.mounts.join(mount)))
 }
 
 /// Changes the durable refresh policy for a materialized mount. The source
@@ -964,11 +1009,20 @@ pub fn set_mount_refresh_mode(
     refresh_mode: &str,
 ) -> Result<MountProvenance, RepositoryError> {
     if !matches!(refresh_mode, "manual" | "event") {
-        return Err(RepositoryError::Configuration("mount refresh must be manual or event".into()));
+        return Err(RepositoryError::Configuration(
+            "mount refresh must be manual or event".into(),
+        ));
     }
     let mut record = mount_provenance(boundary, mount)?;
     record.refresh_mode = refresh_mode.into();
-    fs::write(boundary.directory.join(RUNTIME_DIRECTORY).join("mounts").join(format!("{mount}.kst")), encode_mount_provenance(&record))?;
+    fs::write(
+        boundary
+            .directory
+            .join(RUNTIME_DIRECTORY)
+            .join("mounts")
+            .join(format!("{mount}.kst")),
+        encode_mount_provenance(&record),
+    )?;
     Ok(record)
 }
 
@@ -979,9 +1033,14 @@ pub fn sync_mount(
     mount: &str,
     target_key: &str,
 ) -> Result<MountProvenance, RepositoryError> {
-    let mut record = read_mount_provenance(boundary, mount)?.ok_or_else(|| RepositoryError::NotFound(boundary.mounts.join(mount)))?;
+    let mut record = read_mount_provenance(boundary, mount)?
+        .ok_or_else(|| RepositoryError::NotFound(boundary.mounts.join(mount)))?;
     let source_data = mount_source_data(boundary, mount)?;
-    let source_config = if record.source_format == "repository" { record.source_root.join(".kero").join(CONFIG_FILE) } else { record.source_root.join(CONFIG_FILE) };
+    let source_config = if record.source_format == "repository" {
+        record.source_root.join(".kero").join(CONFIG_FILE)
+    } else {
+        record.source_root.join(CONFIG_FILE)
+    };
     let direction = verify_sync_grant(&source_config, mount, target_key, &record.baseline_sha256)?;
     let source_digest = digest_tree(&source_data)?;
     let local_path = boundary.mounts.join(mount);
@@ -990,15 +1049,30 @@ pub fn sync_mount(
     let local_changed = local_digest != record.baseline_sha256;
     if source_changed && local_changed {
         record.status = "conflicted".into();
-        fs::write(boundary.directory.join(RUNTIME_DIRECTORY).join("mounts").join(format!("{mount}.kst")), encode_mount_provenance(&record))?;
+        fs::write(
+            boundary
+                .directory
+                .join(RUNTIME_DIRECTORY)
+                .join("mounts")
+                .join(format!("{mount}.kst")),
+            encode_mount_provenance(&record),
+        )?;
         return Err(RepositoryError::MountSource("mount.sync-conflict: source and mounted data changed since the last synchronized snapshot".into()));
     }
     if source_changed {
-        if direction == "push" { return Err(RepositoryError::MountSource("mount.sync-denied: grant does not allow pull".into())); }
+        if direction == "push" {
+            return Err(RepositoryError::MountSource(
+                "mount.sync-denied: grant does not allow pull".into(),
+            ));
+        }
         return refresh_mount(boundary, mount);
     }
     if local_changed {
-        if direction == "pull" { return Err(RepositoryError::MountSource("mount.sync-denied: grant does not allow push".into())); }
+        if direction == "pull" {
+            return Err(RepositoryError::MountSource(
+                "mount.sync-denied: grant does not allow push".into(),
+            ));
+        }
         replace_source_tree(&source_data, &local_path, &record.source_root)?;
         record.source_content_sha256 = local_digest.clone();
         record.snapshot_content_sha256 = local_digest.clone();
@@ -1006,14 +1080,25 @@ pub fn sync_mount(
         record.access = "read-write".into();
         record.status = "ready".into();
         record.last_successful_refresh = unix_seconds()?;
-        let metadata = boundary.directory.join(RUNTIME_DIRECTORY).join("mounts").join(format!("{mount}.kst"));
+        let metadata = boundary
+            .directory
+            .join(RUNTIME_DIRECTORY)
+            .join("mounts")
+            .join(format!("{mount}.kst"));
         fs::write(metadata, encode_mount_provenance(&record))?;
         return Ok(record);
     }
     if direction != "pull" {
         set_tree_readonly(&local_path, false)?;
         record.access = "read-write".into();
-        fs::write(boundary.directory.join(RUNTIME_DIRECTORY).join("mounts").join(format!("{mount}.kst")), encode_mount_provenance(&record))?;
+        fs::write(
+            boundary
+                .directory
+                .join(RUNTIME_DIRECTORY)
+                .join("mounts")
+                .join(format!("{mount}.kst")),
+            encode_mount_provenance(&record),
+        )?;
     }
     Ok(record)
 }
@@ -1025,22 +1110,44 @@ pub fn export_mount_conflict(
     mount: &str,
     output: &Path,
 ) -> Result<PathBuf, RepositoryError> {
-    if output.exists() { return Err(RepositoryError::Exists(output.into())); }
+    if output.exists() {
+        return Err(RepositoryError::Exists(output.into()));
+    }
     let source = mount_source_data(boundary, mount)?;
     let local = boundary.mounts.join(mount);
-    if !local.is_dir() { return Err(RepositoryError::NotFound(local)); }
+    if !local.is_dir() {
+        return Err(RepositoryError::NotFound(local));
+    }
     fs::create_dir_all(output)?;
     let result = (|| {
         let source_out = output.join("source");
         let local_out = output.join("mounted");
         fs::create_dir(&source_out)?;
         fs::create_dir(&local_out)?;
-        copy_materialized_tree(&source, &source_out, Path::new(""), destination_is_case_sensitive(&source_out)?)?;
-        copy_materialized_tree(&local, &local_out, Path::new(""), destination_is_case_sensitive(&local_out)?)?;
-        fs::write(output.join("README.kst"), format!("# KERO conflict export; merge manually, then choose source or local.\nmount {mount}\nsourceRoot {:?}\n", source.display().to_string()))?;
+        copy_materialized_tree(
+            &source,
+            &source_out,
+            Path::new(""),
+            destination_is_case_sensitive(&source_out)?,
+        )?;
+        copy_materialized_tree(
+            &local,
+            &local_out,
+            Path::new(""),
+            destination_is_case_sensitive(&local_out)?,
+        )?;
+        fs::write(
+            output.join("README.kst"),
+            format!(
+                "# KERO conflict export; merge manually, then choose source or local.\nmount {mount}\nsourceRoot {:?}\n",
+                source.display().to_string()
+            ),
+        )?;
         Ok(output.to_path_buf())
     })();
-    if result.is_err() { let _ = fs::remove_dir_all(output); }
+    if result.is_err() {
+        let _ = fs::remove_dir_all(output);
+    }
     result
 }
 
@@ -1051,43 +1158,134 @@ pub fn resolve_mount_conflict(
     target_key: &str,
     use_local: bool,
 ) -> Result<MountProvenance, RepositoryError> {
-    if !use_local { return refresh_mount(boundary, mount); }
-    let mut record = read_mount_provenance(boundary, mount)?.ok_or_else(|| RepositoryError::NotFound(boundary.mounts.join(mount)))?;
-    let source_config = if record.source_format == "repository" { record.source_root.join(".kero").join(CONFIG_FILE) } else { record.source_root.join(CONFIG_FILE) };
+    if !use_local {
+        return refresh_mount(boundary, mount);
+    }
+    let mut record = read_mount_provenance(boundary, mount)?
+        .ok_or_else(|| RepositoryError::NotFound(boundary.mounts.join(mount)))?;
+    let source_config = if record.source_format == "repository" {
+        record.source_root.join(".kero").join(CONFIG_FILE)
+    } else {
+        record.source_root.join(CONFIG_FILE)
+    };
     let direction = verify_sync_grant(&source_config, mount, target_key, &record.baseline_sha256)?;
-    if direction == "pull" { return Err(RepositoryError::MountSource("mount.sync-denied: grant does not allow push".into())); }
+    if direction == "pull" {
+        return Err(RepositoryError::MountSource(
+            "mount.sync-denied: grant does not allow push".into(),
+        ));
+    }
     let local = boundary.mounts.join(mount);
     let digest = digest_tree(&local)?;
-    replace_source_tree(&mount_source_data(boundary, mount)?, &local, &record.source_root)?;
+    replace_source_tree(
+        &mount_source_data(boundary, mount)?,
+        &local,
+        &record.source_root,
+    )?;
     record.source_content_sha256 = digest.clone();
     record.snapshot_content_sha256 = digest.clone();
     record.baseline_sha256 = digest;
     record.status = "ready".into();
     record.access = "read-write".into();
     record.last_successful_refresh = unix_seconds()?;
-    fs::write(boundary.directory.join(RUNTIME_DIRECTORY).join("mounts").join(format!("{mount}.kst")), encode_mount_provenance(&record))?;
+    fs::write(
+        boundary
+            .directory
+            .join(RUNTIME_DIRECTORY)
+            .join("mounts")
+            .join(format!("{mount}.kst")),
+        encode_mount_provenance(&record),
+    )?;
     Ok(record)
 }
 
-fn verify_sync_grant(config_path: &Path, mount: &str, target_key: &str, baseline: &str) -> Result<String, RepositoryError> {
-    let document = config::parse(&fs::read_to_string(config_path)?).map_err(|error| RepositoryError::MountSource(error.to_string()))?;
-    let now = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|_| RepositoryError::MountSource("system clock is before Unix epoch".into()))?.as_secs();
-    if document.nodes.iter().any(|node| node.name == "syncGrantRevocation" && node.value.as_deref() == Some(mount)
-        && node.children.iter().any(|child| child.name == "targetKey" && child.value.as_deref() == Some(target_key))) {
-        return Err(RepositoryError::MountSource("mount.sync-denied: the source owner revoked this grant".into()));
+fn verify_sync_grant(
+    config_path: &Path,
+    mount: &str,
+    target_key: &str,
+    baseline: &str,
+) -> Result<String, RepositoryError> {
+    let document = config::parse(&fs::read_to_string(config_path)?)
+        .map_err(|error| RepositoryError::MountSource(error.to_string()))?;
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| RepositoryError::MountSource("system clock is before Unix epoch".into()))?
+        .as_secs();
+    if document.nodes.iter().any(|node| {
+        node.name == "syncGrantRevocation"
+            && node.value.as_deref() == Some(mount)
+            && node.children.iter().any(|child| {
+                child.name == "targetKey" && child.value.as_deref() == Some(target_key)
+            })
+    }) {
+        return Err(RepositoryError::MountSource(
+            "mount.sync-denied: the source owner revoked this grant".into(),
+        ));
     }
-    for grant in document.nodes.iter().filter(|node| node.name == "syncGrant" && node.value.as_deref() == Some(mount)) {
-        let child = |name: &str| grant.children.iter().find(|node| node.name == name).and_then(|node| node.value.clone());
-        let (Some(key), Some(direction), Some(grant_baseline), Some(expires), Some(source_key), Some(signature)) = (child("targetKey"), child("direction"), child("baseline"), child("expires"), child("sourceKey"), child("signature")) else { continue; };
-        if key != target_key || grant_baseline != baseline || expires.parse::<u64>().ok().filter(|value| *value >= now).is_none() { continue; }
-        if !matches!(direction.as_str(), "pull" | "push" | "bidirectional") { continue; }
-        let payload = format!("mount={mount}\ntarget={key}\ndirection={direction}\nbaseline={grant_baseline}\nexpires={expires}\n");
-        let public: [u8; 32] = hex::decode(source_key).map_err(|_| RepositoryError::MountSource("grant source key is invalid".into()))?.try_into().map_err(|_| RepositoryError::MountSource("grant source key is invalid".into()))?;
-        let signature: [u8; 64] = hex::decode(signature).map_err(|_| RepositoryError::MountSource("grant signature is invalid".into()))?.try_into().map_err(|_| RepositoryError::MountSource("grant signature is invalid".into()))?;
-        VerifyingKey::from_bytes(&public).map_err(|_| RepositoryError::MountSource("grant source key is invalid".into()))?.verify(payload.as_bytes(), &Signature::from_bytes(&signature)).map_err(|_| RepositoryError::MountSource("grant signature verification failed".into()))?;
+    for grant in document
+        .nodes
+        .iter()
+        .filter(|node| node.name == "syncGrant" && node.value.as_deref() == Some(mount))
+    {
+        let child = |name: &str| {
+            grant
+                .children
+                .iter()
+                .find(|node| node.name == name)
+                .and_then(|node| node.value.clone())
+        };
+        let (
+            Some(key),
+            Some(direction),
+            Some(grant_baseline),
+            Some(expires),
+            Some(source_key),
+            Some(signature),
+        ) = (
+            child("targetKey"),
+            child("direction"),
+            child("baseline"),
+            child("expires"),
+            child("sourceKey"),
+            child("signature"),
+        )
+        else {
+            continue;
+        };
+        if key != target_key
+            || grant_baseline != baseline
+            || expires
+                .parse::<u64>()
+                .ok()
+                .filter(|value| *value >= now)
+                .is_none()
+        {
+            continue;
+        }
+        if !matches!(direction.as_str(), "pull" | "push" | "bidirectional") {
+            continue;
+        }
+        let payload = format!(
+            "mount={mount}\ntarget={key}\ndirection={direction}\nbaseline={grant_baseline}\nexpires={expires}\n"
+        );
+        let public: [u8; 32] = hex::decode(source_key)
+            .map_err(|_| RepositoryError::MountSource("grant source key is invalid".into()))?
+            .try_into()
+            .map_err(|_| RepositoryError::MountSource("grant source key is invalid".into()))?;
+        let signature: [u8; 64] = hex::decode(signature)
+            .map_err(|_| RepositoryError::MountSource("grant signature is invalid".into()))?
+            .try_into()
+            .map_err(|_| RepositoryError::MountSource("grant signature is invalid".into()))?;
+        VerifyingKey::from_bytes(&public)
+            .map_err(|_| RepositoryError::MountSource("grant source key is invalid".into()))?
+            .verify(payload.as_bytes(), &Signature::from_bytes(&signature))
+            .map_err(|_| {
+                RepositoryError::MountSource("grant signature verification failed".into())
+            })?;
         return Ok(direction);
     }
-    Err(RepositoryError::MountSource("mount.sync-denied: no valid source grant for this identity and mount".into()))
+    Err(RepositoryError::MountSource(
+        "mount.sync-denied: no valid source grant for this identity and mount".into(),
+    ))
 }
 
 fn digest_tree(root: &Path) -> Result<String, RepositoryError> {
@@ -1096,7 +1294,10 @@ fn digest_tree(root: &Path) -> Result<String, RepositoryError> {
 
 /// Validates and hashes a tree using the same deterministic representation as
 /// publication without copying it to another filesystem location.
-fn hash_materialized_tree(root: &Path, relative_root: &Path) -> Result<(String, u64), RepositoryError> {
+fn hash_materialized_tree(
+    root: &Path,
+    relative_root: &Path,
+) -> Result<(String, u64), RepositoryError> {
     let mut entries = fs::read_dir(root)
         .map_err(|error| mount_copy_error(relative_root, "read directory", error))?
         .collect::<Result<Vec<_>, _>>()
@@ -1108,66 +1309,166 @@ fn hash_materialized_tree(root: &Path, relative_root: &Path) -> Result<(String, 
         let name = entry.file_name();
         let relative = relative_root.join(&name);
         validate_destination_name(&name, &relative)?;
-        let kind = entry.file_type().map_err(|error| mount_copy_error(&relative, "read entry type", error))?;
-        if kind.is_symlink() { return Err(RepositoryError::MountSource(format!("source data contains a symbolic link at {}", relative.display()))); }
+        let kind = entry
+            .file_type()
+            .map_err(|error| mount_copy_error(&relative, "read entry type", error))?;
+        if kind.is_symlink() {
+            return Err(RepositoryError::MountSource(format!(
+                "source data contains a symbolic link at {}",
+                relative.display()
+            )));
+        }
         if kind.is_dir() {
             let (child, count) = hash_materialized_tree(&entry.path(), &relative)?;
-            digest.update(b"directory\0"); digest.update(relative.to_string_lossy().as_bytes()); digest.update(b"\0"); digest.update(child.as_bytes()); files += count;
+            digest.update(b"directory\0");
+            digest.update(relative.to_string_lossy().as_bytes());
+            digest.update(b"\0");
+            digest.update(child.as_bytes());
+            files += count;
         } else if kind.is_file() {
-            let bytes = fs::read(entry.path()).map_err(|error| mount_copy_error(&relative, "read file", error))?;
-            digest.update(b"file\0"); digest.update(relative.to_string_lossy().as_bytes()); digest.update(b"\0"); digest.update(bytes); files += 1;
-        } else { return Err(RepositoryError::MountSource(format!("source data contains an unsupported entry at {}", relative.display()))); }
+            let bytes = fs::read(entry.path())
+                .map_err(|error| mount_copy_error(&relative, "read file", error))?;
+            digest.update(b"file\0");
+            digest.update(relative.to_string_lossy().as_bytes());
+            digest.update(b"\0");
+            digest.update(bytes);
+            files += 1;
+        } else {
+            return Err(RepositoryError::MountSource(format!(
+                "source data contains an unsupported entry at {}",
+                relative.display()
+            )));
+        }
     }
     Ok((hex::encode(digest.finalize()), files))
 }
 
-fn replace_source_tree(source: &Path, local: &Path, source_root: &Path) -> Result<(), RepositoryError> {
+fn replace_source_tree(
+    source: &Path,
+    local: &Path,
+    source_root: &Path,
+) -> Result<(), RepositoryError> {
     let runtime = source_root.join(RUNTIME_DIRECTORY).join("sync-staging");
     fs::create_dir_all(&runtime)?;
     let staged = runtime.join("next");
     let backup = runtime.join("previous");
-    if staged.exists() || backup.exists() { return Err(RepositoryError::Exists(runtime)); }
+    if staged.exists() || backup.exists() {
+        return Err(RepositoryError::Exists(runtime));
+    }
     fs::create_dir(&staged)?;
-    copy_materialized_tree(local, &staged, Path::new(""), destination_is_case_sensitive(&staged)?)?;
+    copy_materialized_tree(
+        local,
+        &staged,
+        Path::new(""),
+        destination_is_case_sensitive(&staged)?,
+    )?;
     fs::rename(source, &backup)?;
-    if let Err(error) = fs::rename(&staged, source) { let _ = fs::rename(&backup, source); return Err(error.into()); }
+    if let Err(error) = fs::rename(&staged, source) {
+        let _ = fs::rename(&backup, source);
+        return Err(error.into());
+    }
     fs::remove_dir_all(backup)?;
     Ok(())
 }
 
-fn read_mount_provenance(boundary: &RepositoryBoundary, mount: &str) -> Result<Option<MountProvenance>, RepositoryError> {
+fn read_mount_provenance(
+    boundary: &RepositoryBoundary,
+    mount: &str,
+) -> Result<Option<MountProvenance>, RepositoryError> {
     let directory = boundary.directory.join(RUNTIME_DIRECTORY).join("mounts");
     let kst = directory.join(format!("{mount}.kst"));
-    if kst.is_file() { return decode_mount_provenance(&fs::read_to_string(kst)?).map(Some); }
+    if kst.is_file() {
+        return decode_mount_provenance(&fs::read_to_string(kst)?).map(Some);
+    }
     let legacy = directory.join(format!("{mount}.json"));
-    if !legacy.is_file() { return Ok(None); }
-    let mut record: MountProvenance = serde_json::from_slice(&fs::read(legacy)?)
-        .map_err(|error| RepositoryError::Lifecycle(format!("legacy mount provenance is invalid: {error}")))?;
-    if record.refresh_mode.is_empty() { record.refresh_mode = "manual".into(); }
-    if record.baseline_sha256.is_empty() { record.baseline_sha256 = record.source_content_sha256.clone(); }
-    if record.snapshot_content_sha256.is_empty() { record.snapshot_content_sha256 = record.source_content_sha256.clone(); }
-    if record.status.is_empty() { record.status = "ready".into(); }
+    if !legacy.is_file() {
+        return Ok(None);
+    }
+    let mut record: MountProvenance =
+        serde_json::from_slice(&fs::read(legacy)?).map_err(|error| {
+            RepositoryError::Lifecycle(format!("legacy mount provenance is invalid: {error}"))
+        })?;
+    if record.refresh_mode.is_empty() {
+        record.refresh_mode = "manual".into();
+    }
+    if record.baseline_sha256.is_empty() {
+        record.baseline_sha256 = record.source_content_sha256.clone();
+    }
+    if record.snapshot_content_sha256.is_empty() {
+        record.snapshot_content_sha256 = record.source_content_sha256.clone();
+    }
+    if record.status.is_empty() {
+        record.status = "ready".into();
+    }
     Ok(Some(record))
 }
 
 fn encode_mount_provenance(record: &MountProvenance) -> String {
-    format!("# Generated KERO mount provenance. Do not edit; runtime state is disposable.\nname {}\nsourceRoot {:?}\nsourceContentSha256 {}\nsnapshotContentSha256 {}\nfiles {}\nsourceFormat {}\naccess {}\nrefreshMode {}\nbaselineSha256 {}\nlastSuccessfulRefresh {}\nstatus {}\n", record.name, record.source_root.display().to_string(), record.source_content_sha256, record.snapshot_content_sha256, record.files, record.source_format, record.access, record.refresh_mode, record.baseline_sha256, record.last_successful_refresh, record.status)
+    format!(
+        "# Generated KERO mount provenance. Do not edit; runtime state is disposable.\nname {}\nsourceRoot {:?}\nsourceContentSha256 {}\nsnapshotContentSha256 {}\nfiles {}\nsourceFormat {}\naccess {}\nrefreshMode {}\nbaselineSha256 {}\nlastSuccessfulRefresh {}\nstatus {}\n",
+        record.name,
+        record.source_root.display().to_string(),
+        record.source_content_sha256,
+        record.snapshot_content_sha256,
+        record.files,
+        record.source_format,
+        record.access,
+        record.refresh_mode,
+        record.baseline_sha256,
+        record.last_successful_refresh,
+        record.status
+    )
 }
 
 fn decode_mount_provenance(input: &str) -> Result<MountProvenance, RepositoryError> {
-    let document = config::parse(input).map_err(|error| RepositoryError::Lifecycle(error.to_string()))?;
-    let value = |name: &str| -> Result<String, RepositoryError> { document.nodes.iter().find(|node: &&Node| node.name == name).and_then(|node| node.value.clone()).ok_or_else(|| RepositoryError::Lifecycle(format!("mount provenance is missing {name}"))) };
+    let document =
+        config::parse(input).map_err(|error| RepositoryError::Lifecycle(error.to_string()))?;
+    let value = |name: &str| -> Result<String, RepositoryError> {
+        document
+            .nodes
+            .iter()
+            .find(|node: &&Node| node.name == name)
+            .and_then(|node| node.value.clone())
+            .ok_or_else(|| {
+                RepositoryError::Lifecycle(format!("mount provenance is missing {name}"))
+            })
+    };
     let source_content_sha256 = value("sourceContentSha256")?;
-    let snapshot_content_sha256 = document.nodes.iter().find(|node| node.name == "snapshotContentSha256").and_then(|node| node.value.clone()).unwrap_or_else(|| source_content_sha256.clone());
+    let snapshot_content_sha256 = document
+        .nodes
+        .iter()
+        .find(|node| node.name == "snapshotContentSha256")
+        .and_then(|node| node.value.clone())
+        .unwrap_or_else(|| source_content_sha256.clone());
     Ok(MountProvenance {
-        name: value("name")?, source_root: PathBuf::from(value("sourceRoot")?), source_content_sha256, snapshot_content_sha256,
-        files: value("files")?.parse().map_err(|_| RepositoryError::Lifecycle("mount provenance has invalid files".into()))?,
-        source_format: value("sourceFormat")?, access: value("access")?, refresh_mode: value("refreshMode")?, baseline_sha256: value("baselineSha256")?, last_successful_refresh: document.nodes.iter().find(|node| node.name == "lastSuccessfulRefresh").and_then(|node| node.value.clone()).unwrap_or_default().parse().unwrap_or(0), status: value("status")?,
+        name: value("name")?,
+        source_root: PathBuf::from(value("sourceRoot")?),
+        source_content_sha256,
+        snapshot_content_sha256,
+        files: value("files")?
+            .parse()
+            .map_err(|_| RepositoryError::Lifecycle("mount provenance has invalid files".into()))?,
+        source_format: value("sourceFormat")?,
+        access: value("access")?,
+        refresh_mode: value("refreshMode")?,
+        baseline_sha256: value("baselineSha256")?,
+        last_successful_refresh: document
+            .nodes
+            .iter()
+            .find(|node| node.name == "lastSuccessfulRefresh")
+            .and_then(|node| node.value.clone())
+            .unwrap_or_default()
+            .parse()
+            .unwrap_or(0),
+        status: value("status")?,
     })
 }
 
 fn unix_seconds() -> Result<u64, RepositoryError> {
-    SystemTime::now().duration_since(UNIX_EPOCH).map_err(|_| RepositoryError::Lifecycle("system clock is before Unix epoch".into())).map(|time| time.as_secs())
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| RepositoryError::Lifecycle("system clock is before Unix epoch".into()))
+        .map(|time| time.as_secs())
 }
 
 fn copy_materialized_tree(
@@ -1370,33 +1671,6 @@ fn valid_mount_name(value: &str) -> bool {
             .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
 }
 
-#[cfg(test)]
-mod filesystem_compatibility_tests {
-    use super::validate_destination_name;
-    use std::ffi::OsStr;
-    use std::path::Path;
-
-    #[cfg(windows)]
-    #[test]
-    fn rejects_windows_reserved_destination_names() {
-        for name in ["CON", "aux.txt", "LPT9.", "trailing. "] {
-            assert!(
-                validate_destination_name(OsStr::new(name), Path::new(name)).is_err(),
-                "{name} should not be materialized on Windows"
-            );
-        }
-    }
-
-    #[cfg(not(windows))]
-    #[test]
-    fn leaves_native_destination_names_to_the_host_filesystem() {
-        assert!(
-            validate_destination_name(OsStr::new("ordinary:name"), Path::new("ordinary:name"))
-                .is_ok()
-        );
-    }
-}
-
 fn resolve_under(base: &Path, relative: &Path, scope: &str) -> Result<PathBuf, RepositoryError> {
     if relative.is_absolute()
         || relative.components().any(|part| {
@@ -1458,4 +1732,31 @@ pub fn install_git_excludes(boundary: &RepositoryBoundary) -> Result<(), Reposit
             .write_all(additions.as_bytes())?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod filesystem_compatibility_tests {
+    use super::validate_destination_name;
+    use std::ffi::OsStr;
+    use std::path::Path;
+
+    #[cfg(windows)]
+    #[test]
+    fn rejects_windows_reserved_destination_names() {
+        for name in ["CON", "aux.txt", "LPT9.", "trailing. "] {
+            assert!(
+                validate_destination_name(OsStr::new(name), Path::new(name)).is_err(),
+                "{name} should not be materialized on Windows"
+            );
+        }
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn leaves_native_destination_names_to_the_host_filesystem() {
+        assert!(
+            validate_destination_name(OsStr::new("ordinary:name"), Path::new("ordinary:name"))
+                .is_ok()
+        );
+    }
 }

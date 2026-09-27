@@ -136,7 +136,7 @@ jobs:
           printf '%s' "$KERO_GPG_PRIVATE_KEY" | gpg --batch --import
           fingerprint="${KERO_GPG_KEY_ID#0x}"
           test "$(gpg --batch --with-colons --list-secret-keys "$fingerprint" | awk -F: '$1 == "fpr" { print toupper($10); exit }')" = "$fingerprint"
-          printf '%s\n' '#!/usr/bin/env bash' 'exec gpg --batch --yes --pinentry-mode loopback --passphrase "$KERO_GPG_PASSPHRASE" "$@"' > "$RUNNER_TEMP/gpg-wrapper"
+          printf '%s\n' '#!/usr/bin/env bash' "exec gpg --batch --yes --pinentry-mode loopback --passphrase \"\$KERO_GPG_PASSPHRASE\" \"\$@\"" > "$RUNNER_TEMP/gpg-wrapper"
           chmod 700 "$RUNNER_TEMP/gpg-wrapper"
           git config --global user.name "KERO Release System"
           git config --global user.email "129922068+Kooraseru@users.noreply.github.com"
