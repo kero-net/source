@@ -1,0 +1,43 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/../../.heap/build/qt/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "KERO_RELEASE_DIRECTORY": "${sourceDir}/../../.heap/build/releases/${presetName}"
+      }
+    },
+    {
+      "name": "windows-arm64",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "Windows",
+        "CMAKE_SYSTEM_PROCESSOR": "ARM64",
+        "CMAKE_CXX_COMPILER": "cl.exe"
+      }
+    },
+    {
+      "name": "windows-x64",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "Windows",
+        "CMAKE_SYSTEM_PROCESSOR": "x86_64",
+        "CMAKE_CXX_COMPILER": "$env{KERO_CXX_COMPILER}"
+      }
+    },
+    {
+      "name": "linux-x64",
+      "inherits": "base",
+      "cacheVariables": { "CMAKE_SYSTEM_NAME": "Linux", "CMAKE_SYSTEM_PROCESSOR": "x86_64" }
+    },
+    {
+      "name": "macos-arm64",
+      "inherits": "base",
+      "cacheVariables": { "CMAKE_OSX_ARCHITECTURES": "arm64" }
+    }
+  ]
+}

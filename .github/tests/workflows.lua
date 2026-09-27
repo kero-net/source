@@ -5,41 +5,51 @@ local function read(path)
   return value
 end
 
-local publish = read(".github/workflows/release.yml")
-assert(publish:match("version:\n%s+description: Authored release to publish%.\n%s+required: true\n%s+type: string"))
-assert(publish:match("actions/create%-github%-app%-token@bcd2ba49218906704ab6c1aa796996da409d3eb1"))
-assert(publish:match("client%-id: %${{ vars%.KERO_RELEASE_APP_CLIENT_ID }}"))
-assert(publish:match("private%-key: %${{ secrets%.KERO_RELEASE_APP_PRIVATE_KEY }}"))
-assert(publish:match("owner: kero%-net"))
-assert(publish:match("repositories: kero"))
-assert(not publish:match("PERSONAL_"))
-assert(not publish:match("RELEASE_SIGNING_"))
-
-local unprivileged = assert(publish:match("(.-)\n  publish:\n"))
-assert(not unprivileged:match("KERO_RELEASE_APP_PRIVATE_KEY"))
-assert(not unprivileged:match("KERO_GPG_PRIVATE_KEY"))
-assert(not unprivileged:match("KERO_GPG_PASSPHRASE"))
-assert(not unprivileged:match("environment: release"))
-
-local privileged = assert(publish:match("\n  publish:\n(.-)\n  refresh%-pages:\n"))
-assert(privileged:match("environment: release"))
-assert(privileged:match("KERO_RELEASE_APP_PRIVATE_KEY"))
-assert(privileged:match("KERO_GPG_PRIVATE_KEY"))
-assert(privileged:match("uses: %./%.github/actions/publish"))
-
-local publisher = read(".github/actions/publish/main.lua")
-assert(publisher:match("gh release delete"))
-assert(not publisher:match("tar %-czf"))
-assert(not publisher:match('command%.quote%(archive%)'))
-
 local ci = read(".github/workflows/ci.yml")
 assert(ci:match("name: CI"))
 assert(ci:match("name: CI Gate"))
-assert(ci:match("name: Build Pages"))
-assert(ci:match("name: Build Repository"))
-assert(ci:match("name: Documentation Links"))
-assert(not ci:match("actions/validate"))
+assert(ci:match("name: Publication Decision"))
+assert(ci:match("uses: %./%.github/workflows/release%.yml"))
+assert(ci:match("rustup target add wasm32%-wasip1"))
 
-local pages = read(".github/workflows/pages.yml")
-assert(not pages:match("\n  pull_request:"))
-assert(pages:match("\n  deploy:\n"))
+local publication = read(".github/workflows/release.yml")
+assert(publication:match("name: Publication"))
+assert(publication:match("workflow_call:"))
+assert(not publication:match("workflow_dispatch:"))
+assert(publication:match("channel: %[canary, beta, stable%]"))
+assert(publication:match("owner: kero%-net"))
+assert(publication:match("repositories: kero"))
+assert(publication:match("environment: release"))
+
+local record = read("releases/publication.json")
+assert(record:match('"enabled"%s*:%s*true') or record:match('"enabled"%s*:%s*false'))
+assert(record:match('"record"%s*:%s*"2026%.08%.1%-regular"'))
+
+local pipeline = read(".github/pipeline.lua")
+assert(pipeline:match("distribution/scripts/package%.lua"))
+assert(not pipeline:lower():match("powershell"))
+
+local presets = read("host/qt/CMakePresets.json")
+for _, target in ipairs({ "windows-arm64", "windows-x64", "linux-x64", "macos-arm64" }) do
+  assert(presets:find('"' .. target .. '"', 1, true))
+end
+local qt_cmake = read("host/qt/CMakeLists.txt")
+assert(qt_cmake:match("stage/usr/bin/kero%-install"))
+assert(qt_cmake:match("resources/kero%.desktop"))
+
+local files = assert(io.popen("git ls-files '*.ps1'"))
+assert(files:read("*a") == "", "PowerShell scripts must not be tracked")
+files:close()
+
+local local_distribution = read(".github/workflows/local-distribution.yml")
+assert(local_distribution:match("Local distribution portable checks"))
+assert(local_distribution:match("KERO_PORTABLE_WORKFLOW=1"))
+assert(local_distribution:match("distribution/scripts/local%-run%.lua portable"))
+local distribution = read("distribution/distribution.kst")
+for _, target in ipairs({ "windows-arm64", "windows-x64", "linux-x64", "macos-arm64" }) do
+  assert(distribution:find("target " .. target, 1, true))
+end
+assert(distribution:match("nativeHost windows%-arm64"))
+assert(distribution:match("requiredEnvironment KERO_QT_PREFIX,KERO_RUNTIME_DIR,KERO_WINDRES,KERO_CXX_COMPILER"))
+assert(read("distribution/tests/run.lua"):match("distribution/tests/contract%.lua"))
+assert(read("distribution/scripts/local-run.lua"):match("%.heap/distribution"))

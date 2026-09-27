@@ -1,9 +1,23 @@
+# Build output
 /code/target/
-.heap/
-*.key
-*.pem
+/src/target/
+
+# Local/runtime state
+.heap
 *.nonce
 *.jsonl
+
+# Secrets
+*.key
+*.pem
+
+# Environment
 .env
 .env.*
 !.env.example
+
+# Local distribution config (IF THE USER BUILDS ONE)
+/distribution.local.kst
+
+# KERO machine/runtime state
+/.kero/.runtime/

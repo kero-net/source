@@ -1,50 +1,87 @@
-.TH KERO 1 "2026-09-01" "kero 0.1.0-alpha.1" "KERO User Manual"
+.TH KERO-HOST 1 "2026-09-24" "kero-host 0.1.0-alpha.1" "KERO User Manual"
 .SH NAME
-kero \- project-attached knowledge environment
+kero-host \- explicit repository knowledge environment command
 .SH SYNOPSIS
-.B kero
-.RI [ --help ]
-.RI [ --version ]
+.B kero-host
+.RI [ --json ]
+.RI [ --runtime " file" ]
+.I command
 .SH DESCRIPTION
-.B kero
-is the command-line adapter for KERO, a persistent knowledge environment
-attached to a project. KERO is being rebuilt around mounted heterogeneous
-sources, provenance-preserving semantic knowledge, deterministic compilation,
-queries, and bounded context projection.
+.B kero-host
+operates on an explicitly selected KERO repository environment. It validates
+the portable
+.B kero.wasm
+core before executing an operation. The runtime normally resides beside the
+installed command; development may supply
+.B --runtime
+or
+.B KERO_RUNTIME.
 .PP
-The current pre-alpha binary exposes help and version information while typed
-project, mount, source, semantic, compiler, status, query, and projection APIs
-are implemented in planned phases. It does not yet expose stable product
-commands or a stable storage format.
-.SH PROJECT MODEL
-A future KERO-aware tool discovers the nearest
-.B .kero/
-project boundary by walking upward from an explicit starting path. Reviewable
-project configuration declares knowledge mounts. KERO owns compiled state,
-indexes, and caches; users do not manually maintain an internal database tree.
-.SH ARCHITECTURE
-Human-readable sources are imported into a source-preserving model and semantic
-IR. Canonicalization and canonical encoding are separate deterministic layers.
-Indexes, summaries, embeddings, caches, and context projections are derived.
+Repository targets and mount sources are always explicit. KERO does not scan
+the machine, KERO home, or sibling directories for repositories or input.
+.SH COMMANDS
+.TP
+.B init [path]
+Initialize an eligible non-bare Git worktree. The command creates
+.B .kero/config ,
+.B .kero/data ,
+and
+.B .kero/mnt ,
+but not runtime state.
+.TP
+.B repository status [path]
+Classify one explicit path as not a repository, unsupported, unavailable,
+enrolled, or eligible.
+.TP
+.B repository enroll [--policy ask|automatic|manual] [path]
+Apply the selected enrollment policy to one explicit worktree.
+.TP
+.B mount inspect|create|add|add-home|list|remove|refresh|watch|sync|grant|conflict
+Manage named local mounts. Mount inspect classifies one explicit path as an
+in-format repository environment, marked global home, or out-of-format source.
+Mount add materializes only an explicit repository source's local data. Mount
+add-home materializes only an explicit marked global home's data. Both create
+read-only mounted snapshots by default. `mount repair` revalidates an
+unreleased JSON provenance record and replaces it with KST provenance while
+preserving the prior complete snapshot on failure. `mount watch enable` opts one mount
+into event-driven, debounced replacement snapshots; `mount refresh` is the
+manual equivalent. `mount grant create|list|revoke` manages source-owned,
+signed writable-sync grants. `mount sync` applies a grant-authorized pull or
+push and blocks divergent edits. `mount conflict use-source|use-local|export`
+performs an explicit resolution; export writes both complete trees outside the
+mount. Watchers are not direct filesystem projections.
+.TP
+.B knowledge add|list|remove
+Capture, inspect, or remove explicit local knowledge snapshots. Add accepts a
+regular file or directory, rejects symbolic links and KERO-owned input, and
+stores a deterministic content-addressed snapshot beneath
+.B .kero/data/input .
+.TP
+.B setup [--identity reuse|configure-later]
+Plan or apply global KERO-home creation. `--identity reuse` is the explicit
+consent action that creates or reuses the local Ed25519 identity used by signed
+writable-sync grants. Grant and sync commands never generate a new identity.
+.TP
+.B service start|status|stop
+Control the per-user local KERO service. Ordinary commands repair a missing
+service and send their request only through authenticated local IPC: a
+current-user named pipe on Windows or owner-only Unix socket on Unix hosts.
+The endpoint and token are disposable global-home runtime state; KERO does not
+open a TCP or UDP listener or provide remote/cross-user access.
 .PP
-Source identity and provenance remain distinct. Conflicting claims coexist;
-mount display order does not select a winner.
-.SH INSTALLATION
-Install from a source checkout with:
-.PP
-.EX
-cargo install --path /path/to/kero-source/code/crates/kero-cli --locked
-.EE
+On Windows the installer creates a current-user Startup shortcut that starts
+the host for every signed-in session. `service stop` does not leave a persistent KERO
+installation stopped; it ensures the host is running.
 .SH OPTIONS
 .TP
-.B --help
-Print current command help.
+.B --json
+Emit a machine-readable success or error envelope.
 .TP
-.B --version
-Print the package version.
+.B --runtime " file"
+Use an explicit portable core artifact.
 .SH EXIT STATUS
-Zero indicates successful argument processing. A nonzero status indicates an
-invalid invocation.
+Zero indicates a completed operation. A nonzero status indicates invalid input,
+an unavailable runtime, or a rejected repository/environment boundary.
 .SH SEE ALSO
 .BR cargo (1),
 .BR git (1)

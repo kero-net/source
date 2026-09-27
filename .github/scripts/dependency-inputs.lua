@@ -1,5 +1,5 @@
 #!/usr/bin/env lua
-for _, path in ipairs({ "code/Cargo.lock", ".github/dependabot.yml" }) do
+for _, path in ipairs({ "src/Cargo.lock", ".github/dependabot.yml" }) do
   local file = io.open(path, "r")
   if not file then
     io.stderr:write("missing dependency input: " .. path .. "\n")

@@ -1,0 +1,25 @@
+# KERO repository environment configuration.
+#
+# This file is KERO Structured Text (KST). It owns only portable,
+# repository-scoped policy. Per-mount refresh overrides are the current schema.
+# Keep one active `mount` section per mount; a later section overrides earlier
+# sections to preserve comments and manual edits.
+#
+# Continuous refresh: manual | event (manual is the default)
+# mount global
+#	refresh event
+# mount global
+#	refresh manual
+#
+# Writable synchronization is grant-authorized and is not enabled by a local
+# path or filesystem permission alone.
+#
+# Do not put these settings in this file:
+# - KERO_HOME, install paths, PATH entries, or service ports; they are host facts.
+# - enrollment, identity, or verification defaults; they belong in
+#   KERO_HOME/config.
+# - mount source paths or credentials; mounts are explicit terminal requests.
+#
+# Global preference template: run `kero-host setup` or edit KERO_HOME/config.
+# The service stays local-only and writes disposable state only under
+# KERO_HOME/.runtime/.

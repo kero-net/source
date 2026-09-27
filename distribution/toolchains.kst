@@ -1,0 +1,16 @@
+# Toolchain bootstrap identities. Paths remain local environment configuration.
+toolchain windows-arm64
+	compiler Visual Studio Build Tools C++ ARM64
+	qt Qt for Windows ARM64
+
+toolchain windows-x64
+	compiler LLVM-MinGW x64 or MSVC x64
+	qt Qt for Windows x64
+
+toolchain linux-x64
+	compiler GCC x64
+	qt Qt for Linux x64
+
+toolchain macos-arm64
+	compiler Apple Clang ARM64
+	qt Qt for macOS ARM64

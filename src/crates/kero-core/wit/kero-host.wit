@@ -1,0 +1,24 @@
+package kero:host@0.1.0;
+
+/// Host effects exposed to the portable KERO WASM core. Paths are scope plus
+/// portable segments: a host never receives an unconstrained core path.
+interface environment {
+  variant scope { config, local, mounts, mount(string), runtime }
+  record scoped-path { scope: scope, segments: list<string> }
+  read: func(path: scoped-path) -> result<list<u8>, string>;
+  write: func(path: scoped-path, bytes: list<u8>) -> result<_, string>;
+  create-directory: func(path: scoped-path) -> result<_, string>;
+  materialize-mount: func(name: string) -> result<_, string>;
+  execute: func(capability: string, input: list<u8>) -> result<list<u8>, string>;
+  network: func(capability: string, request: list<u8>) -> result<list<u8>, string>;
+  diagnostic: func(code: string, message: string);
+}
+
+/// Lifecycle effects are scoped to the one repository target selected by the
+/// native host. They expose no machine path to the portable core.
+interface lifecycle {
+  environment-exists: func() -> result<bool, string>;
+  discover-nearest-boundary: func() -> result<bool, string>;
+  set-runtime-hidden: func(hidden: bool) -> result<_, string>;
+  remove-runtime: func() -> result<_, string>;
+}

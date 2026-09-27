@@ -1,0 +1,37 @@
+# Release facts only. Execution belongs in Lua/CMake; policy belongs here.
+verification
+	checksum sha256
+	gpgKeyEnvironment KERO_GPG_KEY_ID
+	gpgPrivateKeyEnvironment KERO_GPG_PRIVATE_KEY
+
+target windows-arm64
+	enabled true
+	lifecycle active
+	artifact kero-installer.exe
+	toolchain msvc2022-arm64
+	nativeHost windows-arm64
+	requiredEnvironment KERO_QT_PREFIX
+
+target windows-x64
+	enabled true
+	lifecycle active
+	artifact kero-installer.exe
+	toolchain llvm-mingw-x64
+	nativeHost windows-x64
+	requiredEnvironment KERO_QT_PREFIX,KERO_RUNTIME_DIR,KERO_WINDRES,KERO_CXX_COMPILER
+
+target linux-x64
+	enabled true
+	lifecycle active
+	artifact kero.AppImage
+	toolchain gcc-x64
+	nativeHost linux-x64
+	requiredEnvironment KERO_QT_PREFIX,KERO_LINUXDEPLOY
+
+target macos-arm64
+	enabled false
+	lifecycle coming-soon
+	artifact *.dmg
+	toolchain clang-arm64
+	nativeHost macos-arm64
+	requiredEnvironment KERO_QT_PREFIX
