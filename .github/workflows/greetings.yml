@@ -11,15 +11,48 @@ permissions:
   contents: read
 
 jobs:
-  welcome:
+  welcome-first-issue:
+    if: github.event_name == 'issues'
     runs-on: ubuntu-latest
     permissions:
       issues: write
-      pull-requests: write
     steps:
-      - name: Welcome first-time contributors
+      - name: Welcome first-time issue reporters
         uses: actions/first-interaction@1c4688942c71f71d4f5502a26ea67c331730fa4d # v3
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           issue_message: Thanks for opening your first issue. A maintainer will review the reproduction and ownership boundary.
-          pr_message: Thanks for your first pull request. Please confirm the target is `source` and include exact validation results.
+          pr_message: unused
+
+  welcome-first-pull-request:
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: read
+    steps:
+      - name: Welcome first-time pull-request contributors
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const pullRequest = context.payload.pull_request;
+            const priorPullRequests = await github.paginate(github.rest.pulls.list, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              per_page: 100,
+            });
+            const hasPriorPullRequest = priorPullRequests.some((candidate) =>
+              candidate.number < pullRequest.number
+              && candidate.user?.login === pullRequest.user.login,
+            );
+            if (hasPriorPullRequest) {
+              core.info(`Skipping welcome for ${pullRequest.user.login}; a prior pull request exists.`);
+              return;
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pullRequest.number,
+              body: 'Thanks for your first pull request. Please confirm the target is `source` and include exact validation results.',
+            });
