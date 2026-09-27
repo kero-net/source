@@ -8,8 +8,8 @@ local filesystem = require("lib.filesystem")
 local renderer = require("i18n.render")
 local pages = require("pages.render")
 
-local destination = arg[1] or "../.heap/source/pages/site"
-local staging = arg[2] or "../.heap/source/pages/markdown"
+local destination = arg[1] or ".heap/build/pages/site"
+local staging = arg[2] or ".heap/build/pages/markdown"
 
 local ok, message = pages.render(root, staging)
 if not ok then io.stderr:write(message .. "\n"); os.exit(1) end

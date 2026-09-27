@@ -10,8 +10,10 @@ Every authored record must also appear under the `version` choices in
 `.github/workflows/release.yml`. Repository validation enforces that the
 dropdown and `releases/records/` contain exactly the same release IDs.
 
-Publication uses the organization-owned Frogge KERO GitHub App and release
-signing identity. The source repository receives them through these
+Publication is a protected maintainer operation. Contributors do not need, use,
+or receive any of these credentials to build, validate, or propose a package
+locally. The organization-owned Frogge KERO GitHub App and release-signing
+identity are available only to the protected release workflow through these
 organization Actions values:
 
 - Variable `KERO_RELEASE_APP_CLIENT_ID`.

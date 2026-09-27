@@ -10,9 +10,9 @@ in `kero-net/kero` are generated.
 Run the Rust checks from a source checkout:
 
 ```bash
-cargo fmt --manifest-path code/Cargo.toml --all -- --check
-cargo clippy --manifest-path code/Cargo.toml --all-targets --all-features --locked -- -D warnings
-cargo test --manifest-path code/Cargo.toml --all-targets --all-features --locked
+cargo fmt --manifest-path src/Cargo.toml --all -- --check
+cargo clippy --manifest-path src/Cargo.toml --all-targets --all-features --locked -- -D warnings
+cargo test --manifest-path src/Cargo.toml --all-targets --all-features --locked
 ```
 
 Changes to semantic identity, provenance, canonicalization, or encoding require

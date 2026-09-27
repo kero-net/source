@@ -5,6 +5,7 @@ package.path = root .. "/?.lua;" .. root .. "/.github/actions/?.lua;" .. package
 
 local command = require("lib.command")
 local filesystem = require("lib.filesystem")
+local kst = require("lib.kst")
 local policy = require("publish.policy")
 local releases = require("releases.validate")
 
@@ -31,10 +32,12 @@ if not payload or payload == "" then fail("publication payload is required") end
 if not token or token == "" then fail("KERO_RELEASE_TOKEN is required") end
 if gh_token ~= token then fail("GH_TOKEN must be the Frogge publication token") end
 
-local config, config_error = filesystem.read(root .. "/repo/config.toml")
-if not config then fail(config_error) end
-local target = config:match('target%s*=%s*"([^"]+)"')
-if not target then fail("repo/config.toml is missing target") end
+local config_ok, config = pcall(kst.parse_file, root .. "/repo/config.kst")
+if not config_ok then fail(config) end
+local repository_config = kst.child(config, "repository")
+local target_node = repository_config and kst.child(repository_config, "target")
+local target = target_node and target_node.value
+if not target then fail("repo/config.kst is missing target") end
 if target ~= policy.target then fail("publication target must be " .. policy.target .. "; got " .. target) end
 
 local release_record = root .. "/releases/records/" .. version .. ".md"

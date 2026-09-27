@@ -5,27 +5,30 @@ package.path = root .. "/?.lua;" .. root .. "/.github/actions/?.lua;" .. package
 
 local command = require("lib.command")
 local filesystem = require("lib.filesystem")
+local kst = require("lib.kst")
 local i18n = require("i18n.render")
 local pages = require("pages.render")
 
 local function read_config()
-  local value, message = filesystem.read(root .. "/repo/config.toml")
-  if not value then return nil, message end
-  local target = value:match('target%s*=%s*"([^"]+)"')
+  local ok, document = pcall(kst.parse_file, root .. "/repo/config.kst")
+  if not ok then return nil, document end
+  local repository = kst.child(document, "repository")
+  if not repository then return nil, "repo/config.kst is missing repository" end
+  local target_node = kst.child(repository, "target")
+  local target = target_node and target_node.value
   local channels = {}
-  local body = value:match("channels%s*=%s*%[(.-)%]")
-  if body then
-    for channel in body:gmatch('"([^"]+)"') do channels[channel] = true end
-  end
-  if not target or next(channels) == nil then return nil, "invalid repo/config.toml" end
+  for _, node in ipairs(kst.children(repository, "channel")) do channels[node.value] = true end
+  if not target or next(channels) == nil then return nil, "invalid repo/config.kst" end
   return { target = target, channels = channels }
 end
 
-local function locale_navigation(locales)
+local function locale_navigation(locales, active_locale)
   local cells = {}
-  for _, locale in ipairs(locales) do
-    local file = locale == locales[1] and "README.md" or ("README." .. locale.key .. ".md")
-    cells[#cells + 1] = string.format('<td><a href="%s">%s</a></td>', file, locale.language)
+  for index, locale in ipairs(locales) do
+    if locale.key ~= active_locale then
+      local file = index == 1 and "README.md" or ("README." .. locale.key .. ".md")
+      cells[#cells + 1] = string.format('<td><a href="%s">%s</a></td>', file, locale.language)
+    end
   end
   return "<table><tr>" .. table.concat(cells) .. "</tr></table>"
 end
@@ -39,7 +42,7 @@ if not config.channels[channel] then
   os.exit(2)
 end
 
-local destination = arg[2] or ("../.heap/source/repo/" .. channel)
+local destination = arg[2] or (".heap/build/repo/" .. channel)
 local version = arg[3] or "unreleased"
 local source_commit = arg[4]
 if not source_commit or source_commit == "" then
@@ -49,13 +52,23 @@ end
 local ok, message = command.run(root, "rm -rf " .. command.quote(destination) .. " && mkdir -p " .. command.quote(destination), true)
 if not ok then io.stderr:write(message .. "\n"); os.exit(1) end
 
-for _, directory in ipairs({ "code", "assets" }) do
-  ok, message = command.run(root, "cp -R " .. command.quote(directory) .. " " .. command.quote(destination .. "/" .. directory), true)
-  if not ok then io.stderr:write(message .. "\n"); os.exit(1) end
-end
+-- `src/target` is compiler output, not repository source.  Copy source through
+-- tar so the publication tree cannot accidentally inherit a locally-created
+-- target directory (which can otherwise be gigabytes per publication channel).
+ok, message = command.run(root,
+  "mkdir -p " .. command.quote(destination .. "/src")
+    .. " && (cd src && tar --exclude='./target' -cf - .)"
+    .. " | (cd " .. command.quote(destination .. "/src") .. " && tar -xf -)", true)
+if not ok then io.stderr:write(message .. "\n"); os.exit(1) end
+
+ok, message = command.run(root, "cp -R assets " .. command.quote(destination .. "/assets"), true)
+if not ok then io.stderr:write(message .. "\n"); os.exit(1) end
 
 ok, message = command.run(root, "mkdir -p " .. command.quote(destination .. "/releases")
   .. " && cp -R releases/records/. " .. command.quote(destination .. "/releases/"), true)
+if not ok then io.stderr:write(message .. "\n"); os.exit(1) end
+
+ok, message = command.run(root, "lua5.4 releases/build.lua " .. command.quote(destination .. "/CHANGELOG.md"), true)
 if not ok then io.stderr:write(message .. "\n"); os.exit(1) end
 
 for _, file in ipairs({ "LICENSE", "CITATION.cff" }) do
@@ -72,12 +85,10 @@ local locales, locale_error = i18n.locales(root)
 if not locales then io.stderr:write(locale_error .. "\n"); os.exit(1) end
 local template, template_error = filesystem.read(root .. "/repo/templates/README.md")
 if not template then io.stderr:write(template_error .. "\n"); os.exit(1) end
-local navigation = locale_navigation(locales)
-
 for index, locale in ipairs(locales) do
   local rendered, render_error = i18n.text(root, template, locale.key)
   if not rendered then io.stderr:write(render_error .. "\n"); os.exit(1) end
-  rendered = rendered:gsub("{{%s*locales:repository%s*}}", navigation)
+  rendered = rendered:gsub("{{%s*locales:repository%s*}}", locale_navigation(locales, locale.key))
   local file = index == 1 and "README.md" or ("README." .. locale.key .. ".md")
   local written, write_error = filesystem.write(destination .. "/" .. file, rendered)
   if not written then io.stderr:write(write_error .. "\n"); os.exit(1) end

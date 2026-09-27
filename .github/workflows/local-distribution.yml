@@ -1,0 +1,12 @@
+name: Local distribution portable checks
+
+on:
+  workflow_dispatch:
+
+jobs:
+  portable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: apt-get update && apt-get install --yes lua5.4
+      - run: KERO_PORTABLE_WORKFLOW=1 lua5.4 distribution/scripts/local-run.lua portable
