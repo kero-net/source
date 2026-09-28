@@ -74,6 +74,11 @@ local function available_test(name, chosen)
   if not configured then return false, "requires configured " .. chosen .. " adapter in distribution.local.kst" end
   return true
 end
+local function available_build(name)
+  local ok = command.run(root, lua .. " distribution/scripts/validate-toolchain.lua " .. command.quote(name) .. " --probe", true)
+  if not ok then return false end
+  return true
+end
 local function test(name, chosen)
   static(name); local ok, reason = available_test(name, chosen); assert(ok, reason)
   if chosen ~= "native" and chosen ~= "emulated" and chosen ~= "windows-emulated" then run(lua .. " distribution/scripts/adapter.lua " .. command.quote(chosen) .. " " .. command.quote(name) .. " test"); evidence(name, "vm", chosen); return end
@@ -85,11 +90,14 @@ local function portable()
   run(lua .. " distribution/tests/contract.lua"); run(lua .. " distribution/tests/local-pipeline.lua")
   if os.getenv("KERO_PORTABLE_WORKFLOW") == "1" then
     io.stdout:write("[ok] Portable workflow checks passed.\n")
-  elseif command.run(root, "act --version", true) then
-    run("act -j portable")
+  elseif command.run(root, "act --version", true) and command.run(root, "docker info >/dev/null 2>&1", true) then
+    run("act workflow_dispatch -W .github/workflows/local-distribution.yml -j portable")
   else
-    io.stdout:write("[skip] act is unavailable; portable Lua checks passed.\n")
+    io.stdout:write("[skip] act or a usable Docker daemon is unavailable; portable Lua checks passed. Install act and start Docker for container parity.\n")
   end
+end
+local function source_checks()
+  run(lua .. " .github/scripts/source-checks.lua local")
 end
 local function show_status()
   for _, item in ipairs(target_list()) do
@@ -100,14 +108,18 @@ local function show_status()
   end
 end
 local function all()
-  portable(); local untested, unavailable = {}, {}
+  source_checks(); portable(); local untested, unavailable = {}, {}
   for _, item in ipairs(target_list()) do if item.enabled then
-    if item.name == host_target() or (item.name == "windows-x64" and host_target() == "windows-arm64") then build(item.name); if item.name == host_target() then test(item.name, "native") else untested[#untested + 1] = item.name end
+    if item.name == host_target() or (item.name == "windows-x64" and host_target() == "windows-arm64") then
+      if available_build(item.name) then
+        build(item.name)
+        if item.name == host_target() then test(item.name, "native") else untested[#untested + 1] = item.name end
+      else unavailable[#unavailable + 1] = item.name end
     else unavailable[#unavailable + 1] = item.name end
   end end
   run("cmake -E make_directory .heap/distribution"); local file = assert(io.open(root .. "/.heap/distribution/summary.toml", "wb")); file:write("complete = false\n")
   for _, name in ipairs(untested) do file:write('untested = "', name, '"\n') end; for _, name in ipairs(unavailable) do file:write('unavailable = "', name, '"\n') end; file:close()
-  io.stdout:write("[partial] Native release evidence is incomplete.\n")
+  io.stdout:write("[partial] Local validation passed; native release evidence is incomplete. See .heap/distribution/summary.toml.\n")
 end
 local function propose()
   local status = assert(command.capture(root, "git status --porcelain")); assert(status == "", "propose requires a clean committed source revision")

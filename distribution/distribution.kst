@@ -18,7 +18,7 @@ target windows-x64
 	artifact kero-installer.exe
 	toolchain llvm-mingw-x64
 	nativeHost windows-x64
-	requiredEnvironment KERO_QT_PREFIX,KERO_RUNTIME_DIR,KERO_WINDRES,KERO_CXX_COMPILER
+	requiredEnvironment KERO_QT_PREFIX,KERO_CXX_COMPILER
 
 target linux-x64
 	enabled true

@@ -6,7 +6,7 @@ package.path = root .. "/?.lua;" .. root .. "/.github/actions/?.lua;" .. package
 local command = require("lib.command")
 local settings = require("distribution.lib.settings")
 local lua = os.getenv("KERO_LUA") or "lua"
-local cargo = package.config:sub(1, 1) == "\\" and "cargo +stable-aarch64-pc-windows-gnullvm" or "cargo"
+local gpg = os.getenv("KERO_GPG_COMMAND") or "gpg"
 
 local function host_target()
   if package.config:sub(1, 1) == "\\" then
@@ -29,6 +29,7 @@ if target == "current" then target = host_target() end
 if target ~= "windows-arm64" and target ~= "windows-x64" and target ~= "linux-x64" and target ~= "macos-arm64" then
   error("target must be current, windows-arm64, windows-x64, linux-x64, or macos-arm64")
 end
+local cargo = "cargo"
 
 local function distribution_target(name)
   local policy = settings.target(root, name)
@@ -90,8 +91,8 @@ local gpg_key = os.getenv("KERO_SIGN_RELEASE") == "1" and os.getenv("KERO_GPG_KE
 local function verify_artifact(artifact)
   run("cmake -E sha256sum " .. command.quote(artifact) .. " > " .. command.quote(artifact .. ".sha256"))
   if gpg_key and gpg_key ~= "" then
-    run("gpg --batch --local-user " .. command.quote(gpg_key) .. " --detach-sign --armor " .. command.quote(artifact))
-    run("gpg --verify " .. command.quote(artifact .. ".asc") .. " " .. command.quote(artifact))
+    run(command.quote(gpg) .. " --batch --local-user " .. command.quote(gpg_key) .. " --detach-sign --armor " .. command.quote(artifact))
+    run(command.quote(gpg) .. " --verify " .. command.quote(artifact .. ".asc") .. " " .. command.quote(artifact))
   end
 end
 

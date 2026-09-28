@@ -8,24 +8,23 @@ tree; do not edit its `canary`, `beta`, or `stable` branches directly.
 
 | Goal | Command | Result |
 | --- | --- | --- |
-| Check source and workflow contracts on a branch | `lua .github/scripts/repository-contracts.lua` | Source-only validation; no desktop package. |
-| Check portable distribution contracts | `kero.cmd portable` on Windows, `./kero portable` on Linux/macOS | Lua checks; runs the local Actions workflow through `act` when available. |
-| Run the portable Actions workflow directly | `act -j portable` | The same portable Lua stage in a Linux container. |
+| Validate locally | VS Code: `Kero: Validate Locally`; CLI: `kero.cmd all current` on Windows, `./kero all current` on Linux/macOS | Credential-free source checks, portable checks, and every locally available package/runtime check. |
+| Run the portable Actions workflow directly | `act workflow_dispatch -W .github/workflows/local-distribution.yml -j portable` | The same portable Lua stage in a Linux container. |
 | Create a local package | `kero.cmd build current` on Windows, `./kero build current` on Linux/macOS | Unsigned package, checksum, and static validation under `.heap/`. |
 | Validate an existing local package | `kero.cmd verify TARGET` or `./kero verify TARGET` | Checksum, package layout, and target architecture only. |
 | Test a package runtime | `kero.cmd test TARGET --adapter native` or `./kero test TARGET --adapter native` | Bounded startup and bootstrap-payload checks; records execution mode. |
 | Build all locally available targets | `kero.cmd all current` or `./kero all current` | Native host test plus cross-builds; reports incomplete release evidence without failing development work. |
 
 The wrappers invoke Lua internally. Direct `lua distribution/scripts/local-run.lua ...`
-is supported for automation, but contributors normally use `kero.cmd` or
-`./kero`.
+is supported for automation, but contributors normally use `Kero: Validate Locally`.
 
 ## Branch checks, package checks, and releases
 
 Branch checks answer whether authored source, contracts, and workflow wiring
-are internally consistent. `act` is useful here because it reproduces the
-portable Linux workflow. It does **not** create a Windows or macOS virtual
-machine, so it cannot establish native desktop-package evidence.
+are internally consistent. `act` reproduces the portable Linux workflow when
+it and Docker are installed; otherwise the direct Lua checks run and report a
+container-parity skip. It does **not** create a Windows or macOS virtual machine,
+so it cannot establish native desktop-package evidence.
 
 Package checks produce artifacts in `.heap/build/releases/<target>/`. A build
 proves compilation, package layout, checksum integrity, and architecture. A
@@ -50,7 +49,8 @@ C++ ARM64 tools, and a Windows SDK. Windows x64 cross-builds on Windows ARM64
 need Qt `llvm-mingw_64` plus LLVM-MinGW x86_64 tools and their runtime DLLs.
 The wrapper discovers these installations; it never commits their paths.
 
-`act` and Docker are optional and only add portable/Linux-container checks.
+`act` and Docker are optional and only add portable/Linux-container checks. The
+repository `.actrc` selects the shared runner image but contains no credentials.
 Hyper-V and QEMU are optional local adapters configured in ignored
 `distribution.local.kst`; they never download guest images or credentials.
 Linux x64 packages run directly on a native x64 Linux distribution; Ubuntu is

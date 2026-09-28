@@ -9,6 +9,8 @@ inputs:
     required: true
   payload:
     required: true
+  packages:
+    required: true
 outputs:
   generated-commit:
     description: Commit published to the generated branch.
@@ -24,3 +26,4 @@ runs:
         "${{ inputs.version }}"
         "${{ inputs.source-commit }}"
         "${{ inputs.payload }}"
+        "${{ inputs.packages }}"

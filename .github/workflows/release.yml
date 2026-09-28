@@ -92,9 +92,109 @@ jobs:
           KERO_GPG_KEY_ID: ${{ vars.KERO_GPG_KEY_ID }}
         run: lua5.4 distribution/scripts/validate-key.lua
 
+  build-release-packages:
+    name: Sign package (${{ matrix.target }})
+    needs: [resolve-publication, validate-release-key]
+    if: needs.resolve-publication.outputs.enabled == 'true'
+    environment: release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: windows-arm64
+            os: windows-11-arm
+            lua: lua
+            qt-host: windows_arm64
+            qt-arch: win64_msvc2022_arm64
+            msvc-arch: arm64
+          - target: windows-x64
+            os: windows-latest
+            lua: lua
+            qt-host: windows
+            qt-arch: win64_msvc2022_64
+            msvc-arch: x64
+          - target: linux-x64
+            os: ubuntu-latest
+            lua: lua5.4
+            qt-host: linux
+            qt-arch: gcc_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out validated source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source-sha }}
+          persist-credentials: false
+      - name: Set up Lua
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install --yes lua5.4 gnupg
+      - name: Set up Lua
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: choco install lua gnupg --yes --no-progress
+      - name: Install WASM core target
+        run: rustup target add wasm32-wasip1
+      - name: Set up MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
+        with:
+          arch: ${{ matrix.msvc-arch }}
+      - name: Install Qt
+        uses: jurplel/install-qt-action@3c4505ac6c534648cc14edb23c1eacf9c412498f # v4.2.0
+        with:
+          version: 6.8.*
+          host: ${{ matrix.qt-host }}
+          target: desktop
+          arch: ${{ matrix.qt-arch }}
+          cache: true
+      - name: Configure package environment
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          "KERO_QT_PREFIX=$env:QT_ROOT_DIR" >> $env:GITHUB_ENV
+          "KERO_CXX_COMPILER=cl.exe" >> $env:GITHUB_ENV
+          if ('${{ matrix.target }}' -eq 'windows-arm64') {
+            "KERO_MSVC_LINKER=$((Get-Command link.exe).Source)" >> $env:GITHUB_ENV
+            "KERO_MSVC_ARCHIVER=$((Get-Command lib.exe).Source)" >> $env:GITHUB_ENV
+          }
+      - name: Install Linux AppImage tooling
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          curl --fail --location --retry 3 https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage --output "$RUNNER_TEMP/linuxdeploy"
+          chmod 700 "$RUNNER_TEMP/linuxdeploy"
+          echo "KERO_QT_PREFIX=$QT_ROOT_DIR" >> "$GITHUB_ENV"
+          echo "KERO_LINUXDEPLOY=$RUNNER_TEMP/linuxdeploy" >> "$GITHUB_ENV"
+          echo "APPIMAGE_EXTRACT_AND_RUN=1" >> "$GITHUB_ENV"
+      - name: Configure protected release signing
+        shell: bash
+        env:
+          KERO_GPG_KEY_ID: ${{ vars.KERO_GPG_KEY_ID }}
+          KERO_GPG_PRIVATE_KEY: ${{ secrets.KERO_GPG_PRIVATE_KEY }}
+          KERO_GPG_PASSPHRASE: ${{ secrets.KERO_GPG_PASSPHRASE }}
+        run: |
+          test -n "$KERO_GPG_KEY_ID"
+          test -n "$KERO_GPG_PRIVATE_KEY"
+          test -n "$KERO_GPG_PASSPHRASE"
+          printf '%s' "$KERO_GPG_PRIVATE_KEY" | gpg --batch --import
+          printf '%s\n' '#!/usr/bin/env bash' "exec gpg --batch --yes --pinentry-mode loopback --passphrase \"\$KERO_GPG_PASSPHRASE\" \"\$@\"" > "$RUNNER_TEMP/kero-gpg"
+          chmod 700 "$RUNNER_TEMP/kero-gpg"
+          echo "KERO_SIGN_RELEASE=1" >> "$GITHUB_ENV"
+          echo "KERO_GPG_KEY_ID=$KERO_GPG_KEY_ID" >> "$GITHUB_ENV"
+          echo "KERO_GPG_COMMAND=$RUNNER_TEMP/kero-gpg" >> "$GITHUB_ENV"
+      - name: Build signed package
+        shell: bash
+        run: ${{ matrix.lua }} distribution/scripts/package.lua "${{ matrix.target }}"
+      - name: Upload signed package
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: package-${{ matrix.target }}-signed
+          path: .heap/build/releases/${{ matrix.target }}/
+          if-no-files-found: error
+
   publish:
     name: Publish ${{ matrix.channel }}
-    needs: [resolve-publication, build-publications]
+    needs: [resolve-publication, build-publications, build-release-packages]
     if: needs.resolve-publication.outputs.enabled == 'true'
     strategy:
       max-parallel: 1
@@ -115,6 +215,12 @@ jobs:
         with:
           name: publication-${{ matrix.channel }}
           path: ${{ runner.temp }}/kero-publication
+      - name: Download signed release packages
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: package-*-signed
+          path: ${{ runner.temp }}/kero-packages
+          merge-multiple: true
       - name: Create organization publication token
         id: publisher
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.0.0
@@ -155,3 +261,4 @@ jobs:
           version: ${{ needs.resolve-publication.outputs.record }}
           source-commit: ${{ inputs.source-sha }}
           payload: ${{ runner.temp }}/kero-publication
+          packages: ${{ runner.temp }}/kero-packages
