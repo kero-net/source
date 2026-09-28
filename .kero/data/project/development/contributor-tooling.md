@@ -12,24 +12,27 @@ local coordination-folder configuration.
 
 `source/.vscode/extensions.json` recommends Rust Analyzer, C/C++, CMake Tools,
 and Lua support. `.heap/` is ignored within `source/` so disposable output
-follows the repository when it is opened directly. VS Code does not own build
-or package tasks.
+follows the repository when it is opened directly. VS Code exposes one standard
+task, `Kero: Validate Locally`, which calls the source-owned runner.
 
 ## Direction
 
-Local native jobs own package execution. Contributors invoke the source-owned
-local runner, which writes packages and evidence under `.heap/` without GitHub
-CLI, remote staging, or credentials. It separates cross-build output from
-runtime evidence, and records emulated/VM execution honestly. `act` provides
-optional portable/Linux container checks; native Windows and macOS checks run
-only on matching local hosts or configured local VMs. Target-specific toolchain requirements remain canonical under
+Local native jobs own package execution. `kero all current` runs shared source
+checks, portable checks, and all locally available package/runtime checks before
+writing evidence under `.heap/`, without GitHub CLI, remote staging, or credentials.
+It separates cross-build output from runtime evidence and records unavailable
+native coverage as partial. `act` provides optional portable/Linux container
+checks; native Windows and macOS checks run only on matching local hosts or
+configured local VMs. Target-specific toolchain requirements remain canonical under
 [`product/distribution/`](../../product/distribution/).
 
 The Windows and POSIX `kero` wrappers are equivalent contributor entry points.
 The Linux wrapper resolves Lua, Qt through `qtpaths6`, and `linuxdeploy` from
 the local distribution, then reports missing packages without relying on
 contributor-specific committed paths. `act` runs the same portable Lua stage
-inside a Linux container and never substitutes for native desktop evidence.
+inside a Linux container when both it and Docker are installed. The repository
+`.actrc` supplies the shared image mapping but no secrets, tokens, or automatic
+installation; it never substitutes for native desktop evidence.
 
 ## Configuration ownership
 

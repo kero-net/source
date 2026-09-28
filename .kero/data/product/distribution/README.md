@@ -6,11 +6,12 @@ KERO core semantics or creates a platform-specific product version.
 
 ## Integrity policy
 
-Every package receives a SHA-256 checksum. Contributor packages are unsigned
-by default and never require credentials or key material. A detached signature
-is added only by a maintainer-controlled release environment that explicitly
-enables signing. The KERO public GPG key and its full fingerprint accompany
-releases that use those signatures.
+Every package receives a SHA-256 checksum. Contributor packages and pull
+request CI artifacts are unsigned by default and never require credentials or
+key material. A detached signature is added only in GitHub's protected
+`release` environment, which explicitly enables signing after the validated
+source revision has been selected for publication. The KERO public GPG key and
+its full fingerprint accompany releases that use those signatures.
 
 Platform-native code signing and notarization are currently deferred. KERO does
 not simulate those trust signals or claim unsigned artifacts are natively

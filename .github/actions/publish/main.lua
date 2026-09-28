@@ -13,6 +13,7 @@ local channel = arg[1]
 local version = arg[2]
 local source_commit = arg[3]
 local payload = arg[4]
+local packages = arg[5]
 local token = os.getenv("KERO_RELEASE_TOKEN")
 local gh_token = os.getenv("GH_TOKEN")
 
@@ -31,6 +32,9 @@ end
 if not payload or payload == "" then fail("publication payload is required") end
 if not token or token == "" then fail("KERO_RELEASE_TOKEN is required") end
 if gh_token ~= token then fail("GH_TOKEN must be the Frogge publication token") end
+if not packages or packages == "" then
+  fail("signed release packages directory is required")
+end
 
 local config_ok, config = pcall(kst.parse_file, root .. "/repo/config.kst")
 if not config_ok then fail(config) end
@@ -166,6 +170,16 @@ local generated_commit, commit_error = command.capture(worktree, "git rev-parse 
 if not generated_commit then cleanup(); fail(commit_error) end
 
 recreate_release()
+local package_files, package_error = command.capture(root,
+  "find " .. command.quote(packages) .. " -type f -print")
+if not package_files or package_files == "" then
+  cleanup(); fail("no signed release packages found: " .. tostring(package_error or packages))
+end
+local upload_files = {}
+for file in package_files:gmatch("[^\n]+") do upload_files[#upload_files + 1] = command.quote(file) end
+checked(command.run(root,
+  "gh release upload " .. command.quote(tag) .. " --repo " .. command.quote(target)
+    .. " --clobber " .. table.concat(upload_files, " "), true))
 enforce_stable_default()
 
 local output = os.getenv("GITHUB_OUTPUT")

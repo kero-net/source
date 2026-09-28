@@ -2,71 +2,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Kero: Check Repository Contracts",
-            "type": "process",
-            "command": "lua",
-            "args": [
-                "${workspaceFolder}/.github/scripts/repository-contracts.lua"
-            ],
-            "problemMatcher": []
-        },
-        {
-            "label": "Kero: Portable",
-            "type": "process",
-            "command": "${workspaceFolder}/kero",
-            "windows": {
-                "command": "${workspaceFolder}\\kero.cmd"
-            },
-            "args": [
-                "portable"
-            ],
-            "problemMatcher": []
-        },
-        {
-            "label": "Kero: Build Current",
-            "type": "process",
-            "command": "${workspaceFolder}/kero",
-            "windows": {
-                "command": "${workspaceFolder}\\kero.cmd"
-            },
-            "args": [
-                "build",
-                "current"
-            ],
-            "group": "build",
-            "problemMatcher": []
-        },
-        {
-            "label": "Kero: Verify",
-            "type": "process",
-            "command": "${workspaceFolder}/kero",
-            "windows": {
-                "command": "${workspaceFolder}\\kero.cmd"
-            },
-            "args": [
-                "verify",
-                "${input:target}"
-            ],
-            "problemMatcher": []
-        },
-        {
-            "label": "Kero: Test Native",
-            "type": "process",
-            "command": "${workspaceFolder}/kero",
-            "windows": {
-                "command": "${workspaceFolder}\\kero.cmd"
-            },
-            "args": [
-                "test",
-                "${input:target}",
-                "--adapter",
-                "native"
-            ],
-            "group": "test",
-            "problemMatcher": []
-        },
-        {
-            "label": "Kero: All Current",
+            "label": "Kero: Validate Locally",
             "type": "process",
             "command": "${workspaceFolder}/kero",
             "windows": {
@@ -76,14 +12,8 @@
                 "all",
                 "current"
             ],
+            "group": "test",
             "problemMatcher": []
-        }
-    ],
-    "inputs": [
-        {
-            "id": "target",
-            "type": "promptString",
-            "description": "Kero target"
         }
     ]
 }

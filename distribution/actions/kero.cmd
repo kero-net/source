@@ -14,6 +14,7 @@ if "%KERO_TARGET%"=="current" (
 
 if /I "%KERO_STAGE%"=="portable" goto :run
 if /I "%KERO_STAGE%"=="propose" goto :run
+if /I "%KERO_STAGE%"=="all" goto :run
 
 if "%KERO_TARGET%"=="windows-arm64" (
   for /f "delims=" %%I in ('powershell.exe -NoProfile -NonInteractive -Command "$kits=@(Get-ChildItem -Path 'C:\Qt\*\msvc2022_arm64' -Directory -ErrorAction SilentlyContinue); if($kits.Count){$kits[$kits.Count-1].FullName}"') do set "KERO_QT_PREFIX=%%I"

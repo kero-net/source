@@ -30,9 +30,7 @@ jobs:
           branch: ${{ github.event.pull_request.base.ref || github.ref_name }}
           kind: source
       - name: Validate repository shape
-        run: lua5.4 .github/scripts/repository-contracts.lua
-      - name: Validate Git whitespace
-        run: git diff --check
+        run: KERO_LUA=lua5.4 lua5.4 .github/scripts/source-checks.lua contracts
 
   rust:
     name: Rust (${{ matrix.os }})
@@ -49,12 +47,8 @@ jobs:
           persist-credentials: false
       - name: Install WASM core target
         run: rustup target add wasm32-wasip1
-      - name: Check formatting
-        run: cargo fmt --manifest-path src/Cargo.toml --all --check
-      - name: Run Clippy
-        run: cargo clippy --manifest-path src/Cargo.toml --all-targets --all-features -- -D warnings
-      - name: Run tests
-        run: cargo test --manifest-path src/Cargo.toml --all-targets --locked
+      - name: Run shared Rust checks
+        run: lua5.4 .github/scripts/source-checks.lua rust
 
   github-actions:
     name: GitHub Actions
@@ -67,12 +61,8 @@ jobs:
           persist-credentials: false
       - name: Set up Lua
         run: sudo apt-get update && sudo apt-get install --yes lua5.4
-      - name: Parse automation Lua
-        run: find .github -name '*.lua' -print0 | xargs -0 -n1 luac5.4 -p
-      - name: Test workflow contracts
-        run: lua5.4 .github/tests/workflows.lua
-      - name: Validate actions and workflows
-        run: lua5.4 .github/scripts/actionlint.lua
+      - name: Run shared automation checks
+        run: KERO_LUA=lua5.4 KERO_LUAC=luac5.4 lua5.4 .github/scripts/source-checks.lua automation
 
   documentation:
     name: Documentation
@@ -85,8 +75,8 @@ jobs:
           persist-credentials: false
       - name: Set up groff
         run: sudo apt-get update && sudo apt-get install --yes groff
-      - name: Validate manpage
-        run: groff -z -mandoc src/man/kero.1
+      - name: Run shared documentation checks
+        run: lua5.4 .github/scripts/source-checks.lua documentation
 
   localization:
     name: Localization
@@ -99,8 +89,8 @@ jobs:
           persist-credentials: false
       - name: Set up Lua
         run: sudo apt-get update && sudo apt-get install --yes lua5.4
-      - name: Validate localization
-        run: lua5.4 i18n/validate.lua
+      - name: Run shared localization checks
+        run: KERO_LUA=lua5.4 lua5.4 .github/scripts/source-checks.lua localization
 
   release-system:
     name: Release System
@@ -113,16 +103,8 @@ jobs:
           persist-credentials: false
       - name: Set up Lua
         run: sudo apt-get update && sudo apt-get install --yes lua5.4
-      - name: Test release IDs
-        run: lua5.4 releases/tests/id.lua
-      - name: Test release records
-        run: lua5.4 releases/tests/records.lua
-      - name: Test release sequencing
-        run: lua5.4 releases/tests/sequence.lua
-      - name: Test publication policy
-        run: lua5.4 .github/actions/publish/tests/policy.lua
-      - name: Test publisher preflight
-        run: lua5.4 .github/actions/publish/tests/preflight.lua
+      - name: Run shared release-system checks
+        run: KERO_LUA=lua5.4 lua5.4 .github/scripts/source-checks.lua release
 
   build-pages:
     name: Build Pages
@@ -214,6 +196,88 @@ jobs:
           fail-on-severity: moderate
           deny-licenses: GPL-3.0, AGPL-3.0
 
+  packages:
+    name: Package (${{ matrix.target }})
+    needs: repository-contracts
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: windows-arm64
+            os: windows-11-arm
+            lua: lua
+            qt-host: windows_arm64
+            qt-arch: win64_msvc2022_arm64
+            msvc-arch: arm64
+          - target: windows-x64
+            os: windows-latest
+            lua: lua
+            qt-host: windows
+            qt-arch: win64_msvc2022_64
+            msvc-arch: x64
+          - target: linux-x64
+            os: ubuntu-latest
+            lua: lua5.4
+            qt-host: linux
+            qt-arch: gcc_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install WASM core target
+        run: rustup target add wasm32-wasip1
+      - name: Set up Lua
+        shell: bash
+        run: sudo apt-get update && sudo apt-get install --yes lua5.4
+        if: runner.os == 'Linux'
+      - name: Set up Lua
+        shell: pwsh
+        run: choco install lua --yes --no-progress
+        if: runner.os == 'Windows'
+      - name: Set up MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
+        with:
+          arch: ${{ matrix.msvc-arch }}
+      - name: Install Qt
+        uses: jurplel/install-qt-action@3c4505ac6c534648cc14edb23c1eacf9c412498f # v4.2.0
+        with:
+          version: 6.8.*
+          host: ${{ matrix.qt-host }}
+          target: desktop
+          arch: ${{ matrix.qt-arch }}
+          cache: true
+      - name: Configure Windows package environment
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          "KERO_QT_PREFIX=$env:QT_ROOT_DIR" >> $env:GITHUB_ENV
+          "KERO_CXX_COMPILER=cl.exe" >> $env:GITHUB_ENV
+          if ('${{ matrix.target }}' -eq 'windows-arm64') {
+            "KERO_MSVC_LINKER=$((Get-Command link.exe).Source)" >> $env:GITHUB_ENV
+            "KERO_MSVC_ARCHIVER=$((Get-Command lib.exe).Source)" >> $env:GITHUB_ENV
+          }
+      - name: Install Linux AppImage tooling
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          curl --fail --location --retry 3 https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage --output "$RUNNER_TEMP/linuxdeploy"
+          chmod 700 "$RUNNER_TEMP/linuxdeploy"
+          echo "KERO_QT_PREFIX=$QT_ROOT_DIR" >> "$GITHUB_ENV"
+          echo "KERO_LINUXDEPLOY=$RUNNER_TEMP/linuxdeploy" >> "$GITHUB_ENV"
+          echo "APPIMAGE_EXTRACT_AND_RUN=1" >> "$GITHUB_ENV"
+      - name: Build unsigned package
+        shell: bash
+        run: ${{ matrix.lua }} distribution/scripts/package.lua "${{ matrix.target }}"
+      - name: Upload unsigned package
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: package-${{ matrix.target }}-unsigned
+          path: .heap/build/releases/${{ matrix.target }}/
+          if-no-files-found: error
+
   ci-gate:
     name: CI Gate
     if: always()
@@ -228,6 +292,7 @@ jobs:
       - build-repository
       - documentation-links
       - dependency-review
+      - packages
     runs-on: ubuntu-latest
     steps:
       - name: Require successful CI jobs
