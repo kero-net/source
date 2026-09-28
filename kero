@@ -1,0 +1,48 @@
+#!/usr/bin/env sh
+# Source-owned POSIX package wrapper. It discovers standard Linux tools; paths stay local.
+set -eu
+
+kero_root=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+kero_stage=${1:-build}
+kero_target=${2:-current}
+if [ "$kero_target" = current ]; then
+  case "$(uname -s)" in
+    Darwin) kero_target=macos-arm64 ;;
+    *) case "$(uname -m)" in x86_64|amd64) kero_target=linux-x64 ;; *) kero_target=linux-unsupported ;; esac ;;
+  esac
+fi
+
+if [ -n "${KERO_LUA:-}" ]; then
+  :
+elif command -v lua >/dev/null 2>&1; then
+  KERO_LUA=$(command -v lua)
+elif command -v lua5.4 >/dev/null 2>&1; then
+  KERO_LUA=$(command -v lua5.4)
+else
+  echo "KERO requires Lua 5.4. Install your distribution's lua5.4 package." >&2
+  exit 1
+fi
+export KERO_LUA
+
+case "$kero_stage" in
+  portable|status|propose|verify|test) ;;
+  *)
+    if [ "$kero_target" = linux-unsupported ]; then
+      echo "KERO currently provides Linux packages for x64 hosts only. Configure a Linux x64 VM/adapter or contribute Linux ARM64 support." >&2
+      exit 1
+    fi
+    if [ "$kero_target" = linux-x64 ]; then
+      if [ -z "${KERO_QT_PREFIX:-}" ]; then
+        kero_qtpaths=$(command -v qtpaths6 || command -v qtpaths || true)
+        if [ -n "$kero_qtpaths" ]; then KERO_QT_PREFIX=$($kero_qtpaths --install-prefix); export KERO_QT_PREFIX; fi
+      fi
+      if [ -z "${KERO_LINUXDEPLOY:-}" ]; then KERO_LINUXDEPLOY=$(command -v linuxdeploy || true); export KERO_LINUXDEPLOY; fi
+      if [ -z "${KERO_QT_PREFIX:-}" ] || [ -z "${KERO_LINUXDEPLOY:-}" ]; then
+        echo "KERO Linux packages require Qt 6 development tools (qtpaths6) and linuxdeploy. Set KERO_QT_PREFIX/KERO_LINUXDEPLOY if they are installed outside PATH." >&2
+        exit 1
+      fi
+    fi
+    ;;
+esac
+
+exec "$KERO_LUA" "$kero_root/distribution/scripts/local-run.lua" "$@"

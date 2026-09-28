@@ -1,54 +1,72 @@
 # KERO source
 
-`kero-net/source` is the canonical authored repository for KERO. The public
-`kero-net/kero` repository is generated from this tree; its `canary`, `beta`,
-and `stable` branches are never edited directly.
+`kero-net/source` is KERO's authored source repository. GitHub reviews source
+branches here. The public `kero-net/kero` repository is generated from this
+tree; do not edit its `canary`, `beta`, or `stable` branches directly.
 
-- `code/` owns the Rust workspace, CLI, core library, and manpage.
-- `assets/` owns authored images and other shared visual assets.
-- `releases/` owns release validation and immutable authored release records.
-- `i18n/` owns the ordered locale registry and translation catalogs.
-- `pages/` owns the GitHub Pages templates and build system.
-- `repo/` owns the generated public-repository projection.
-- `.github/actions/` owns reusable GitHub capabilities and the privileged
-  publisher.
-- `.github/scripts/` owns single-workflow validation entrypoints.
-- `.github/tests/` owns workflow and action-wiring contracts.
-- `.github/workflows/` composes those operations into GitHub workflows.
+## Which command to run
 
-Organization-wide GitHub templates and community defaults belong in the
-separate `kero-net/.github` repository.
+| Goal | Command | Result |
+| --- | --- | --- |
+| Validate locally | VS Code: `Kero: Validate Locally`; CLI: `kero.cmd all current` on Windows, `./kero all current` on Linux/macOS | Credential-free source checks, portable checks, and every locally available package/runtime check. |
+| Run the portable Actions workflow directly | `act workflow_dispatch -W .github/workflows/local-distribution.yml -j portable` | The same portable Lua stage in a Linux container. |
+| Create a local package | `kero.cmd build current` on Windows, `./kero build current` on Linux/macOS | Unsigned package, checksum, and static validation under `.heap/`. |
+| Validate an existing local package | `kero.cmd verify TARGET` or `./kero verify TARGET` | Checksum, package layout, and target architecture only. |
+| Test a package runtime | `kero.cmd test TARGET --adapter native` or `./kero test TARGET --adapter native` | Bounded startup and bootstrap-payload checks; records execution mode. |
+| Build all locally available targets | `kero.cmd all current` or `./kero all current` | Native host test plus cross-builds; reports incomplete release evidence without failing development work. |
 
-Run repository-contract validation with:
+The wrappers invoke Lua internally. Direct `lua distribution/scripts/local-run.lua ...`
+is supported for automation, but contributors normally use `Kero: Validate Locally`.
 
-```bash
-lua5.4 .github/scripts/repository-contracts.lua
-git diff --check
-```
+## Branch checks, package checks, and releases
 
-Run the independently owned Lua test families with:
+Branch checks answer whether authored source, contracts, and workflow wiring
+are internally consistent. `act` reproduces the portable Linux workflow when
+it and Docker are installed; otherwise the direct Lua checks run and report a
+container-parity skip. It does **not** create a Windows or macOS virtual machine,
+so it cannot establish native desktop-package evidence.
 
-```bash
-lua5.4 i18n/validate.lua
-lua5.4 releases/tests/id.lua
-lua5.4 releases/tests/records.lua
-lua5.4 releases/tests/sequence.lua
-lua5.4 .github/actions/publish/tests/policy.lua
-lua5.4 .github/actions/publish/tests/preflight.lua
-lua5.4 .github/tests/workflows.lua
-lua5.4 .github/scripts/actionlint.lua
-```
+Package checks produce artifacts in `.heap/build/releases/<target>/`. A build
+proves compilation, package layout, checksum integrity, and architecture. A
+runtime test additionally proves that the bootstrap payload extracts and the
+packaged application reaches its startup state. Evidence records whether that
+execution was `native`, `emulated`, or a configured `vm`.
 
-Build a local Pages preview with:
+A release candidate is stricter: `kero propose` requires a clean committed
+revision and native runtime evidence for every enabled target. Cross-builds and
+Windows ARM x64 emulation are valuable diagnostics but never become native
+release evidence. Maintainers reproduce candidates and sign only in their
+protected local release environment.
 
-```bash
-lua5.4 pages/build.lua
-```
+## Install only what your command needs
 
-Build a generated public branch with:
+All contributors need Lua 5.4, CMake, Rust with `wasm32-wasip1`, and Git for
+Windows' POSIX shell on Windows. No GitHub CLI, token, signing key, Docker, VM,
+or clean working tree is required for ordinary local builds.
 
-```bash
-lua5.4 repo/build.lua canary
-```
+Windows ARM64 builds additionally need Qt `msvc2022_arm64`, Visual Studio 2022
+C++ ARM64 tools, and a Windows SDK. Windows x64 cross-builds on Windows ARM64
+need Qt `llvm-mingw_64` plus LLVM-MinGW x86_64 tools and their runtime DLLs.
+The wrapper discovers these installations; it never commits their paths.
 
-Disposable build and validation output belongs under the workspace `.heap/`.
+`act` and Docker are optional and only add portable/Linux-container checks. The
+repository `.actrc` selects the shared runner image but contains no credentials.
+Hyper-V and QEMU are optional local adapters configured in ignored
+`distribution.local.kst`; they never download guest images or credentials.
+Linux x64 packages run directly on a native x64 Linux distribution; Ubuntu is
+one supported example, not a special runner requirement. The POSIX wrapper finds
+`lua`/`lua5.4`, `qtpaths6`, and `linuxdeploy` from `PATH`, or reports precisely
+which of those packages are absent. macOS ARM64 is **coming soon** and needs a
+Mac contributor with Xcode, Apple tools, and a matching Qt kit.
+
+## Repository layout
+
+- `src/` — Rust workspace, CLI, core library, and manpage.
+- `distribution/` — package contracts, local runner, adapters, and tests.
+- `releases/` — immutable release records and publication validation.
+- `.github/` — reusable GitHub capabilities, workflow contracts, and release wiring.
+- `.kero/` — canonical product and contributor-workflow knowledge.
+- `.heap/` — ignored local artifacts, diagnostics, and evidence.
+
+Read `.kero/README.md` and the applicable canonical node before changing
+product behavior, packaging, or contributor workflow.

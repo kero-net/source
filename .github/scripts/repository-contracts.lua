@@ -1,8 +1,8 @@
 #!/usr/bin/env lua
 local required = {
-  "code/Cargo.toml",
-  "code/crates/kero-core/Cargo.toml",
-  "code/crates/kero-cli/Cargo.toml",
+  "src/Cargo.toml",
+  "src/crates/kero-core/Cargo.toml",
+  "src/crates/kero-cli/Cargo.toml",
   "assets/images",
   "releases/records",
   "i18n/locales.toml",
@@ -12,9 +12,9 @@ local required = {
   "pages/build.lua",
   "pages/render.lua",
   "repo/build.lua",
-  "repo/config.toml",
+  "repo/config.kst",
   ".github/actions",
-  ".cargo/config.toml",
+  ".kero/README.md",
   "README.md",
   "LICENSE",
 }
@@ -32,7 +32,7 @@ for _, path in ipairs(required) do
   end
 end
 
-for _, path in ipairs({ "automation", "publication", "docs", "localization", "content", "builders" }) do
+for _, path in ipairs({ "code", "automation", "publication", "docs", "localization", "content", "builders" }) do
   if exists(path) then
     io.stderr:write("legacy source directory still exists: " .. path .. "\n")
     os.exit(1)

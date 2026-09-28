@@ -1,0 +1,19 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Kero: Validate Locally",
+            "type": "process",
+            "command": "${workspaceFolder}/kero",
+            "windows": {
+                "command": "${workspaceFolder}\\kero.cmd"
+            },
+            "args": [
+                "all",
+                "current"
+            ],
+            "group": "test",
+            "problemMatcher": []
+        }
+    ]
+}

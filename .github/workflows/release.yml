@@ -1,15 +1,10 @@
-name: Publish
+name: Publication
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
-      channel:
-        description: Generated public branch to replace.
-        required: true
-        type: choice
-        options: [canary, beta, stable]
-      version:
-        description: Authored release to publish.
+      source-sha:
+        description: Validated source commit to publish.
         required: true
         type: string
 
@@ -18,138 +13,214 @@ permissions:
   checks: read
 
 concurrency:
-  group: publish-release-stream
+  group: publish-source
   cancel-in-progress: false
 
 jobs:
-  publish-request:
-    name: Publish Request
+  resolve-publication:
+    name: Resolve Publication
     runs-on: ubuntu-latest
     outputs:
-      source-commit: ${{ steps.source.outputs.commit }}
+      enabled: ${{ steps.publication.outputs.enabled }}
+      record: ${{ steps.publication.outputs.record }}
+      tag: ${{ steps.publication.outputs.tag }}
     steps:
-      - name: Check out canonical source
+      - name: Check out validated source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: source
+          ref: ${{ inputs.source-sha }}
           persist-credentials: false
       - name: Set up Lua
         run: sudo apt-get update && sudo apt-get install --yes lua5.4
-      - name: Require source dispatch
-        uses: ./.github/actions/branches
-        with:
-          branch: ${{ github.ref_name }}
-          kind: source
-      - name: Validate publication channel
-        uses: ./.github/actions/branches
-        with:
-          branch: ${{ inputs.channel }}
-          kind: channel
-      - name: Resolve immutable source commit
-        id: source
-        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Resolve authored publication record
+        id: publication
+        run: lua5.4 .github/scripts/publication.lua
 
-  verify-source-ci:
-    name: Verify Source CI
-    needs: publish-request
+  build-publications:
+    name: Build ${{ matrix.channel }} publication
+    needs: resolve-publication
+    if: needs.resolve-publication.outputs.enabled == 'true'
+    strategy:
+      matrix:
+        channel: [canary, beta, stable]
     runs-on: ubuntu-latest
     steps:
-      - name: Require successful CI Gate for source commit
-        env:
-          GH_TOKEN: ${{ github.token }}
-          KERO_SOURCE_COMMIT: ${{ needs.publish-request.outputs.source-commit }}
-        run: |
-          conclusion="$(
-            gh api \
-              -H "Accept: application/vnd.github+json" \
-              "repos/$GITHUB_REPOSITORY/commits/$KERO_SOURCE_COMMIT/check-runs" \
-              --jq '[.check_runs[] | select(.name == "CI Gate" and .app.slug == "github-actions")][0].conclusion // ""'
-          )"
-          if [ "$conclusion" != "success" ]; then
-            echo "No successful CI Gate found for $KERO_SOURCE_COMMIT" >&2
-            exit 1
-          fi
-
-  validate-release:
-    name: Validate Release
-    needs: publish-request
-    runs-on: ubuntu-latest
-    outputs:
-      tag: ${{ steps.release.outputs.tag }}
-    steps:
-      - name: Check out immutable source
+      - name: Check out validated source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.publish-request.outputs.source-commit }}
-          fetch-depth: 0
-          fetch-tags: true
-          persist-credentials: false
-      - name: Set up Lua
-        run: sudo apt-get update && sudo apt-get install --yes lua5.4
-      - name: Validate authored release and sequence
-        id: release
-        run: lua5.4 .github/scripts/release.lua "${{ inputs.version }}"
-
-  build-publication:
-    name: Build Publication
-    needs: [publish-request, verify-source-ci, validate-release]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out immutable source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ needs.publish-request.outputs.source-commit }}
+          ref: ${{ inputs.source-sha }}
           persist-credentials: false
       - name: Set up repository tooling
         run: sudo apt-get update && sudo apt-get install --yes lua5.4 pandoc
       - name: Build generated repository
         uses: ./.github/actions/build-repo
         with:
-          channel: ${{ inputs.channel }}
+          channel: ${{ matrix.channel }}
           destination: ${{ runner.temp }}/kero-publication
-          version: ${{ inputs.version }}
-          source-commit: ${{ needs.publish-request.outputs.source-commit }}
+          version: ${{ needs.resolve-publication.outputs.record }}
+          source-commit: ${{ inputs.source-sha }}
       - name: Upload publication artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: publication-${{ needs.publish-request.outputs.source-commit }}
+          name: publication-${{ matrix.channel }}
           path: ${{ runner.temp }}/kero-publication
+          if-no-files-found: error
+          include-hidden-files: true
+
+  validate-release-key:
+    name: Validate Optional Release Key
+    needs: resolve-publication
+    if: needs.resolve-publication.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out validated source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source-sha }}
+          persist-credentials: false
+      - name: Set up Lua and GPG
+        run: sudo apt-get update && sudo apt-get install --yes lua5.4 gnupg
+      - name: Import optional release key
+        env:
+          KERO_GPG_PRIVATE_KEY: ${{ secrets.KERO_GPG_PRIVATE_KEY }}
+        run: |
+          if [ -n "$KERO_GPG_PRIVATE_KEY" ]; then
+            printf '%s' "$KERO_GPG_PRIVATE_KEY" | gpg --batch --import
+          fi
+      - name: Validate optional release key
+        env:
+          KERO_GPG_KEY_ID: ${{ vars.KERO_GPG_KEY_ID }}
+        run: lua5.4 distribution/scripts/validate-key.lua
+
+  package-plan:
+    name: Package Plan
+    needs: resolve-publication
+    if: needs.resolve-publication.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source-sha }}
+          persist-credentials: false
+      - run: sudo apt-get update && sudo apt-get install --yes lua5.4
+      - id: plan
+        run: echo "matrix=$(lua5.4 distribution/scripts/hosted-matrix.lua)" >> "$GITHUB_OUTPUT"
+
+  build-release-packages:
+    name: Sign package (${{ matrix.target }})
+    needs: [resolve-publication, validate-release-key, package-plan]
+    if: needs.resolve-publication.outputs.enabled == 'true'
+    environment: release
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.package-plan.outputs.matrix) }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out validated source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source-sha }}
+          persist-credentials: false
+      - name: Set up Lua
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install --yes lua5.4 gnupg
+      - name: Set up Lua
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: choco install lua gnupg --yes --no-progress
+      - name: Install WASM core target
+        run: rustup target add wasm32-wasip1
+      - name: Set up MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
+        with:
+          arch: ${{ matrix.msvc_arch }}
+      - name: Install Qt
+        uses: jurplel/install-qt-action@3c4505ac6c534648cc14edb23c1eacf9c412498f # v4.2.0
+        with:
+          version: ${{ matrix.qt_version }}
+          host: ${{ matrix.qt_host }}
+          target: desktop
+          arch: ${{ matrix.qt_arch }}
+          cache: true
+      - name: Configure package environment
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          "KERO_QT_PREFIX=$env:QT_ROOT_DIR" >> $env:GITHUB_ENV
+          "KERO_CXX_COMPILER=cl.exe" >> $env:GITHUB_ENV
+          if ('${{ matrix.target }}' -eq 'windows-arm64') {
+            "KERO_MSVC_LINKER=$((Get-Command link.exe).Source)" >> $env:GITHUB_ENV
+            "KERO_MSVC_ARCHIVER=$((Get-Command lib.exe).Source)" >> $env:GITHUB_ENV
+          }
+      - name: Install Linux AppImage tooling
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          curl --fail --location --retry 3 https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage --output "$RUNNER_TEMP/linuxdeploy"
+          chmod 700 "$RUNNER_TEMP/linuxdeploy"
+          echo "KERO_QT_PREFIX=$QT_ROOT_DIR" >> "$GITHUB_ENV"
+          echo "KERO_LINUXDEPLOY=$RUNNER_TEMP/linuxdeploy" >> "$GITHUB_ENV"
+          echo "APPIMAGE_EXTRACT_AND_RUN=1" >> "$GITHUB_ENV"
+      - name: Configure protected release signing
+        shell: bash
+        env:
+          KERO_GPG_KEY_ID: ${{ vars.KERO_GPG_KEY_ID }}
+          KERO_GPG_PRIVATE_KEY: ${{ secrets.KERO_GPG_PRIVATE_KEY }}
+          KERO_GPG_PASSPHRASE: ${{ secrets.KERO_GPG_PASSPHRASE }}
+        run: |
+          test -n "$KERO_GPG_KEY_ID"
+          test -n "$KERO_GPG_PRIVATE_KEY"
+          test -n "$KERO_GPG_PASSPHRASE"
+          printf '%s' "$KERO_GPG_PRIVATE_KEY" | gpg --batch --import
+          printf '%s\n' '#!/usr/bin/env bash' "exec gpg --batch --yes --pinentry-mode loopback --passphrase \"\$KERO_GPG_PASSPHRASE\" \"\$@\"" > "$RUNNER_TEMP/kero-gpg"
+          chmod 700 "$RUNNER_TEMP/kero-gpg"
+          echo "KERO_SIGN_RELEASE=1" >> "$GITHUB_ENV"
+          echo "KERO_GPG_KEY_ID=$KERO_GPG_KEY_ID" >> "$GITHUB_ENV"
+          echo "KERO_GPG_COMMAND=$RUNNER_TEMP/kero-gpg" >> "$GITHUB_ENV"
+      - name: Build signed package
+        shell: bash
+        run: ${{ matrix.lua }} distribution/scripts/package.lua "${{ matrix.target }}"
+      - name: Upload signed package
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: package-${{ matrix.target }}-signed
+          path: .heap/build/releases/${{ matrix.target }}/
           if-no-files-found: error
 
   publish:
-    name: Publish ${{ inputs.channel }}
-    needs: [publish-request, validate-release, build-publication]
+    name: Publish ${{ matrix.channel }}
+    needs: [resolve-publication, build-publications, build-release-packages]
+    if: needs.resolve-publication.outputs.enabled == 'true'
+    strategy:
+      max-parallel: 1
+      matrix:
+        channel: [canary, beta, stable]
     runs-on: ubuntu-latest
     environment: release
     steps:
-      - name: Check out immutable source
+      - name: Check out validated source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.publish-request.outputs.source-commit }}
+          ref: ${{ inputs.source-sha }}
           persist-credentials: false
       - name: Set up publication tooling
         run: sudo apt-get update && sudo apt-get install --yes lua5.4
       - name: Download publication artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: publication-${{ needs.publish-request.outputs.source-commit }}
+          name: publication-${{ matrix.channel }}
           path: ${{ runner.temp }}/kero-publication
-      - name: Verify publication identity
-        env:
-          KERO_CHANNEL: ${{ inputs.channel }}
-          KERO_VERSION: ${{ inputs.version }}
-          KERO_SOURCE_COMMIT: ${{ needs.publish-request.outputs.source-commit }}
-        run: |
-          expected="channel = \"$KERO_CHANNEL\"
-          version = \"$KERO_VERSION\"
-          source = \"$KERO_SOURCE_COMMIT\""
-          actual="$(cat "$RUNNER_TEMP/kero-publication/publication.toml")"
-          if [ "$actual" != "$expected" ]; then
-            echo "Publication artifact identity does not match the request" >&2
-            exit 1
-          fi
-      - name: Create Frogge publication token
-        id: frogge
+      - name: Download signed release packages
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: package-*-signed
+          path: ${{ runner.temp }}/kero-packages
+          merge-multiple: true
+      - name: Create organization publication token
+        id: publisher
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.0.0
         with:
           client-id: ${{ vars.KERO_RELEASE_APP_CLIENT_ID }}
@@ -165,59 +236,27 @@ jobs:
           KERO_GPG_PRIVATE_KEY: ${{ secrets.KERO_GPG_PRIVATE_KEY }}
           KERO_GPG_PASSPHRASE: ${{ secrets.KERO_GPG_PASSPHRASE }}
         run: |
-          for name in KERO_GPG_KEY_ID KERO_GPG_VERIFICATION_KEYS KERO_GPG_PRIVATE_KEY KERO_GPG_PASSPHRASE; do
-            if [ -z "${!name:-}" ]; then
-              echo "Missing protected release value: $name" >&2
-              exit 1
-            fi
-          done
-          expected="${KERO_GPG_KEY_ID#0x}"
-          if [[ ! "$expected" =~ ^[0-9A-F]{40}$ ]]; then
-            echo "KERO_GPG_KEY_ID must be a full 40-character fingerprint" >&2
-            exit 1
-          fi
           printf '%s' "$KERO_GPG_VERIFICATION_KEYS" | gpg --batch --import
           printf '%s' "$KERO_GPG_PRIVATE_KEY" | gpg --batch --import
-          fingerprint="$(gpg --batch --with-colons --list-secret-keys "$expected" | awk -F: '$1 == "fpr" { print toupper($10); exit }')"
-          if [ "$fingerprint" != "$expected" ]; then
-            echo "Imported release key does not match KERO_GPG_KEY_ID" >&2
-            exit 1
-          fi
-          wrapper="$RUNNER_TEMP/gpg-wrapper"
-          # shellcheck disable=SC2016 # Expand these variables when the generated wrapper runs.
-          printf '%s\n' \
-            '#!/usr/bin/env bash' \
-            'args=(--batch --yes --pinentry-mode loopback)' \
-            'args+=(--passphrase "$KERO_GPG_PASSPHRASE")' \
-            'exec gpg "${args[@]}" "$@"' > "$wrapper"
-          chmod 700 "$wrapper"
+          fingerprint="${KERO_GPG_KEY_ID#0x}"
+          test "$(gpg --batch --with-colons --list-secret-keys "$fingerprint" | awk -F: '$1 == "fpr" { print toupper($10); exit }')" = "$fingerprint"
+          printf '%s\n' '#!/usr/bin/env bash' "exec gpg --batch --yes --pinentry-mode loopback --passphrase \"\$KERO_GPG_PASSPHRASE\" \"\$@\"" > "$RUNNER_TEMP/gpg-wrapper"
+          chmod 700 "$RUNNER_TEMP/gpg-wrapper"
           git config --global user.name "KERO Release System"
           git config --global user.email "129922068+Kooraseru@users.noreply.github.com"
           git config --global user.signingkey "$fingerprint"
-          git config --global gpg.program "$wrapper"
+          git config --global gpg.program "$RUNNER_TEMP/gpg-wrapper"
           git config --global commit.gpgsign true
           git config --global tag.gpgSign true
       - name: Publish generated repository
         uses: ./.github/actions/publish
         env:
-          KERO_RELEASE_TOKEN: ${{ steps.frogge.outputs.token }}
+          KERO_RELEASE_TOKEN: ${{ steps.publisher.outputs.token }}
           KERO_GPG_PASSPHRASE: ${{ secrets.KERO_GPG_PASSPHRASE }}
-          GH_TOKEN: ${{ steps.frogge.outputs.token }}
+          GH_TOKEN: ${{ steps.publisher.outputs.token }}
         with:
-          channel: ${{ inputs.channel }}
-          version: ${{ inputs.version }}
-          source-commit: ${{ needs.publish-request.outputs.source-commit }}
+          channel: ${{ matrix.channel }}
+          version: ${{ needs.resolve-publication.outputs.record }}
+          source-commit: ${{ inputs.source-sha }}
           payload: ${{ runner.temp }}/kero-publication
-
-  refresh-pages:
-    name: Refresh Pages
-    needs: publish
-    runs-on: ubuntu-latest
-    permissions:
-      actions: write
-      contents: read
-    steps:
-      - name: Dispatch source-owned Pages workflow
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref source
+          packages: ${{ runner.temp }}/kero-packages

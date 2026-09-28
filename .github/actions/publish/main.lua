@@ -5,6 +5,7 @@ package.path = root .. "/?.lua;" .. root .. "/.github/actions/?.lua;" .. package
 
 local command = require("lib.command")
 local filesystem = require("lib.filesystem")
+local kst = require("lib.kst")
 local policy = require("publish.policy")
 local releases = require("releases.validate")
 
@@ -12,6 +13,7 @@ local channel = arg[1]
 local version = arg[2]
 local source_commit = arg[3]
 local payload = arg[4]
+local packages = arg[5]
 local token = os.getenv("KERO_RELEASE_TOKEN")
 local gh_token = os.getenv("GH_TOKEN")
 
@@ -30,11 +32,16 @@ end
 if not payload or payload == "" then fail("publication payload is required") end
 if not token or token == "" then fail("KERO_RELEASE_TOKEN is required") end
 if gh_token ~= token then fail("GH_TOKEN must be the Frogge publication token") end
+if not packages or packages == "" then
+  fail("signed release packages directory is required")
+end
 
-local config, config_error = filesystem.read(root .. "/repo/config.toml")
-if not config then fail(config_error) end
-local target = config:match('target%s*=%s*"([^"]+)"')
-if not target then fail("repo/config.toml is missing target") end
+local config_ok, config = pcall(kst.parse_file, root .. "/repo/config.kst")
+if not config_ok then fail(config) end
+local repository_config = kst.child(config, "repository")
+local target_node = repository_config and kst.child(repository_config, "target")
+local target = target_node and target_node.value
+if not target then fail("repo/config.kst is missing target") end
 if target ~= policy.target then fail("publication target must be " .. policy.target .. "; got " .. target) end
 
 local release_record = root .. "/releases/records/" .. version .. ".md"
@@ -163,6 +170,16 @@ local generated_commit, commit_error = command.capture(worktree, "git rev-parse 
 if not generated_commit then cleanup(); fail(commit_error) end
 
 recreate_release()
+local package_files, package_error = command.capture(root,
+  "find " .. command.quote(packages) .. " -type f -print")
+if not package_files or package_files == "" then
+  cleanup(); fail("no signed release packages found: " .. tostring(package_error or packages))
+end
+local upload_files = {}
+for file in package_files:gmatch("[^\n]+") do upload_files[#upload_files + 1] = command.quote(file) end
+checked(command.run(root,
+  "gh release upload " .. command.quote(tag) .. " --repo " .. command.quote(target)
+    .. " --clobber " .. table.concat(upload_files, " "), true))
 enforce_stable_default()
 
 local output = os.getenv("GITHUB_OUTPUT")
