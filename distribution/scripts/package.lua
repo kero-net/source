@@ -41,7 +41,7 @@ local function distribution_target(name)
 end
 
 local policy = distribution_target(target)
-if not policy then error("target is not enabled by distribution/distribution.kst: " .. target) end
+if not policy then error("target is not enabled by distribution/builds.json: " .. target) end
 if not policy.enabled then error("target is " .. policy.lifecycle .. "; native macOS packaging requires a Mac contributor toolchain") end
 
 local function require_environment(names)

@@ -4,7 +4,7 @@ This directory owns desktop-package facts and mechanics: target definitions,
 toolchain requirements, package assembly, checksums, detached signatures, and
 artifact verification. It does not select repository channels or publish.
 
-`distribution.kst` is the human-owned target contract. `scripts/` runs
+`builds.json` is the human-owned target contract. `scripts/` runs
 that contract locally; generated packages, logs, and evidence remain below
 `.heap/`.
 

@@ -1,0 +1,49 @@
+{
+  "verification": {
+    "checksum": "sha256",
+    "gpgKeyEnvironment": "KERO_GPG_KEY_ID",
+    "gpgPrivateKeyEnvironment": "KERO_GPG_PRIVATE_KEY"
+  },
+  "targets": [
+    {
+      "name": "windows-arm64",
+      "enabled": true,
+      "lifecycle": "active",
+      "artifact": "kero-installer.exe",
+      "toolchain": "msvc2022-arm64",
+      "nativeHost": "windows-arm64",
+      "requiredEnvironment": ["KERO_QT_PREFIX"],
+      "hosted": { "runner": "windows-11-arm", "lua": "lua", "qtVersion": "6.8.3", "qtHost": "windows_arm64", "qtArch": "win64_msvc2022_arm64", "msvcArchitecture": "arm64" }
+    },
+    {
+      "name": "windows-x64",
+      "enabled": true,
+      "lifecycle": "active",
+      "artifact": "kero-installer.exe",
+      "toolchain": "msvc2022-x64",
+      "nativeHost": "windows-x64",
+      "requiredEnvironment": ["KERO_QT_PREFIX", "KERO_CXX_COMPILER"],
+      "hosted": { "runner": "windows-latest", "lua": "lua", "qtVersion": "6.8.3", "qtHost": "windows", "qtArch": "win64_msvc2022_64", "msvcArchitecture": "x64" }
+    },
+    {
+      "name": "linux-x64",
+      "enabled": true,
+      "lifecycle": "active",
+      "artifact": "kero.AppImage",
+      "toolchain": "gcc-x64",
+      "nativeHost": "linux-x64",
+      "requiredEnvironment": ["KERO_QT_PREFIX", "KERO_LINUXDEPLOY"],
+      "hosted": { "runner": "ubuntu-latest", "lua": "lua5.4", "qtVersion": "6.8.3", "qtHost": "linux", "qtArch": "gcc_64" }
+    },
+    {
+      "name": "macos-arm64",
+      "enabled": false,
+      "lifecycle": "coming-soon",
+      "artifact": "kero.dmg",
+      "toolchain": "clang-arm64",
+      "nativeHost": "macos-arm64",
+      "requiredEnvironment": ["KERO_QT_PREFIX"],
+      "hosted": null
+    }
+  ]
+}

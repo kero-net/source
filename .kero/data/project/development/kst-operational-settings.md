@@ -1,6 +1,6 @@
 # KST operational settings migration
 
-**Status:** complete for operational settings.
+**Status:** superseded for distribution targets by the JSON build registry.
 
 KERO Structured Text is the sole target format for KERO-owned, human-editable
 operational settings. This document records the migration work; the durable
@@ -11,9 +11,8 @@ format and ownership contract remains under
 
 | Setting family | Current owner | Current consumers | Migration order |
 |---|---|---|---|
-| distribution targets and signing-variable names | `distribution/distribution.kst` | package, local-run, validation scripts, workflow checks | complete |
+| distribution targets, hosted build inputs, and signing-variable names | `distribution/builds.json` | package, local-run, validation scripts, and both hosted workflows | complete |
 | contributor VM adapters | ignored `distribution.local.kst` | adapter, Hyper-V, local-run scripts | complete |
-| toolchain labels | `distribution/toolchains.kst` | distribution documentation/tooling | complete |
 | repository publication settings | `repo/config.kst` | repository build and publication action | complete |
 | localization catalogs | `i18n/*.toml` | renderer, validator, publication checks | separate content-schema migration |
 
@@ -24,18 +23,18 @@ is chosen by their owning output contract.
 Cargo manifests, CMake presets, and other third-party tool manifests remain in
 the formats required by those tools.
 
-## First migration: distribution targets
+## Distribution target registry
 
-`distribution/distribution.kst` owns the target registry and signing-variable
-names. One shared Lua reader serves package, orchestration, key validation,
-toolchain validation, and contract tests; there is no TOML fallback or duplicate
-target default in scripts.
+`distribution/builds.json` replaces `distribution/distribution.kst` and
+`distribution/toolchains.kst`. It owns each target's artifact, native host,
+local requirements, hosted runner, Qt kit/version, compiler architecture, and
+signing-variable names. One shared Lua reader serves package, orchestration,
+key validation, toolchain validation, the generated GitHub Actions matrix, and
+contract tests; there is no fallback registry or duplicate workflow matrix.
 
-The migration is complete only when the KST registry is the sole editable
-distribution-target source and all listed consumers reject malformed, missing,
-or contradictory KST values with actionable errors.
+This replaces the earlier KST-only decision because hosted packaging introduced
+public, per-distribution inputs that both local tooling and workflow matrices
+must consume. JSON makes the complete build shape visible in one place while
+the GitHub Actions pin remains in workflow YAML for Dependabot.
 
-All operational setting families in this inventory now use KST. Localization
-catalogs remain TOML because they are authored content schemas rather than
-operational configuration; replacing them requires a separate content-format
-decision and migration.
+Localization catalogs remain TOML because they are authored content schemas.

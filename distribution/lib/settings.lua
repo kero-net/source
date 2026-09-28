@@ -1,97 +1,88 @@
--- Reads the human-owned KST distribution registry.
+-- Reads the single human-owned distribution registry.
 local M = {}
 
-local function fail(path, line, message)
-  error(path .. ":" .. line .. ": " .. message)
-end
-
-local function parse(path)
-  local file = assert(io.open(path, "rb"), "missing " .. path)
-  local root, stack = { children = {} }, {}
-  local line_number = 0
-  for line in (file:read("*a") .. "\n"):gmatch("([^\n]*)\n") do
-    line_number = line_number + 1
-    if line ~= "" and not line:match("^\t*#") then
-      local tabs, name, value = line:match("^(\t*)([%a][%w]*)(.*)$")
-      if not name then fail(path, line_number, "invalid KST node") end
-      if value ~= "" then
-        if value:sub(1, 1) ~= " " or value:sub(2):find("^%s") then
-          fail(path, line_number, "invalid KST value")
-        end
-        value = value:sub(2)
-      else
-        value = nil
-      end
-      local depth = #tabs
-      if depth > #stack then fail(path, line_number, "indentation jumps more than one level") end
-      local parent = depth == 0 and root or stack[depth]
-      if not parent then fail(path, line_number, "missing parent") end
-      local node = { name = name, value = value, children = {} }
-      parent.children[#parent.children + 1] = node
-      stack[depth + 1] = node
-      for index = depth + 2, #stack do stack[index] = nil end
+local function decode(text)
+  local at = 1
+  local function space() at = text:find("[^%s]", at) or #text + 1 end
+  local value
+  local function string_value()
+    at = at + 1; local out = {}
+    while at <= #text do
+      local character = text:sub(at, at); at = at + 1
+      if character == '"' then return table.concat(out) end
+      if character == "\\" then
+        local escaped = text:sub(at, at); at = at + 1
+        local map = { ['"'] = '"', ['\\'] = '\\', ['/'] = '/', b = '\b', f = '\f', n = '\n', r = '\r', t = '\t' }
+        assert(map[escaped], "distribution JSON contains an unsupported escape")
+        out[#out + 1] = map[escaped]
+      else out[#out + 1] = character end
+    end
+    error("distribution JSON has an unterminated string")
+  end
+  local function array()
+    at = at + 1; local out = {}; space()
+    if text:sub(at, at) == "]" then at = at + 1; return out end
+    while true do
+      out[#out + 1] = value(); space(); local delimiter = text:sub(at, at); at = at + 1
+      if delimiter == "]" then return out end
+      assert(delimiter == ",", "distribution JSON array is malformed"); space()
     end
   end
-  file:close()
-  return root
-end
-
-local function child(node, name)
-  for _, value in ipairs(node.children) do if value.name == name then return value end end
-end
-
-local function required(node, name)
-  local value = child(node, name)
-  assert(value and value.value, "distribution KST is missing " .. name)
-  return value.value
+  local function object()
+    at = at + 1; local out = {}; space()
+    if text:sub(at, at) == "}" then at = at + 1; return out end
+    while true do
+      assert(text:sub(at, at) == '"', "distribution JSON object key is malformed")
+      local key = string_value(); space(); assert(text:sub(at, at) == ":", "distribution JSON object is malformed"); at = at + 1
+      out[key] = value(); space(); local delimiter = text:sub(at, at); at = at + 1
+      if delimiter == "}" then return out end
+      assert(delimiter == ",", "distribution JSON object is malformed"); space()
+    end
+  end
+  function value()
+    space(); local character = text:sub(at, at)
+    if character == '"' then return string_value() end
+    if character == "{" then return object() end
+    if character == "[" then return array() end
+    if text:sub(at, at + 3) == "true" then at = at + 4; return true end
+    if text:sub(at, at + 4) == "false" then at = at + 5; return false end
+    if text:sub(at, at + 3) == "null" then at = at + 4; return nil end
+    error("distribution JSON contains an unsupported value at byte " .. at)
+  end
+  local result = value(); space(); assert(at > #text, "distribution JSON has trailing content"); return result
 end
 
 function M.read(root)
-  local document = parse(root .. "/distribution/distribution.kst")
-  local verification = assert(child(document, "verification"), "distribution KST is missing verification")
+  local file = assert(io.open(root .. "/distribution/builds.json", "rb"), "missing distribution/builds.json")
+  local document = decode(file:read("*a")); file:close()
+  assert(type(document.targets) == "table" and type(document.verification) == "table", "distribution/builds.json requires targets and verification")
   local targets = {}
-  for _, node in ipairs(document.children) do
-    if node.name == "target" then
-      local name = assert(node.value, "distribution KST target requires a name")
-      assert(not targets[name], "distribution KST repeats target " .. name)
-      local enabled = required(node, "enabled")
-      assert(enabled == "true" or enabled == "false", "distribution KST enabled must be true or false")
-      targets[name] = {
-        name = name, enabled = enabled == "true", lifecycle = required(node, "lifecycle"),
-        artifact = required(node, "artifact"), toolchain = required(node, "toolchain"),
-        native_host = required(node, "nativeHost"),
-        required_environment = required(node, "requiredEnvironment"),
-      }
-    end
+  for _, item in ipairs(document.targets) do
+    assert(type(item.name) == "string" and not targets[item.name], "distribution target name must be unique")
+    assert(type(item.enabled) == "boolean" and type(item.requiredEnvironment) == "table", "distribution target is malformed: " .. item.name)
+    item.required_environment = table.concat(item.requiredEnvironment, ",")
+    item.native_host = item.nativeHost
+    targets[item.name] = item
   end
-  return {
-    verification = {
-      checksum = required(verification, "checksum"),
-      gpg_key_environment = required(verification, "gpgKeyEnvironment"),
-      gpg_private_key_environment = required(verification, "gpgPrivateKeyEnvironment"),
-    },
-    targets = targets,
-  }
+  return { verification = { checksum = document.verification.checksum, gpg_key_environment = document.verification.gpgKeyEnvironment, gpg_private_key_environment = document.verification.gpgPrivateKeyEnvironment }, targets = targets }
 end
 
-function M.target(root, name)
-  return M.read(root).targets[name]
-end
+function M.target(root, name) return M.read(root).targets[name] end
 
 function M.adapter(root, name)
-  local path = root .. "/distribution.local.kst"
-  local file = io.open(path, "rb")
-  if not file then return nil end
-  file:close()
-  local document = parse(path)
-  for _, node in ipairs(document.children) do
-    if node.name == "adapter" and node.value == name then
-      local result = {}
-      for _, setting in ipairs(node.children) do result[setting.name] = setting.value end
-      return result
+  local path = root .. "/distribution.local.kst"; local file = io.open(path, "rb")
+  if not file then return nil end; file:close()
+  local content = assert(io.open(path, "rb")):read("*a")
+  local current, result = false, {}
+  for line in (content .. "\n"):gmatch("([^\n]*)\n") do
+    local adapter = line:match("^adapter%s+(.+)$")
+    if adapter then current = adapter == name
+    elseif current then
+      local key, item = line:match("^\t([%w]+)%s+(.+)$")
+      if key then result[key] = item elseif line:match("^%S") then break end
     end
   end
-  return nil
+  return next(result) and result or nil
 end
 
 return M
