@@ -38,7 +38,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            lua: lua5.4
+          - os: macos-latest
+            lua: lua
+          - os: windows-latest
+            lua: lua
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out source
@@ -47,8 +53,18 @@ jobs:
           persist-credentials: false
       - name: Install WASM core target
         run: rustup target add wasm32-wasip1
+      - name: Set up Lua
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install --yes lua5.4
+      - name: Set up Lua
+        if: runner.os == 'macOS'
+        run: brew install lua
+      - name: Set up Lua
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: choco install lua --yes --no-progress
       - name: Run shared Rust checks
-        run: lua5.4 .github/scripts/source-checks.lua rust
+        run: ${{ matrix.lua }} .github/scripts/source-checks.lua rust
 
   github-actions:
     name: GitHub Actions
@@ -74,7 +90,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up groff
-        run: sudo apt-get update && sudo apt-get install --yes groff
+        run: sudo apt-get update && sudo apt-get install --yes groff lua5.4
       - name: Run shared documentation checks
         run: lua5.4 .github/scripts/source-checks.lua documentation
 
