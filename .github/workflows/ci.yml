@@ -260,7 +260,7 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@3c4505ac6c534648cc14edb23c1eacf9c412498f # v4.2.0
         with:
-          version: 6.8.*
+          version: 6.8.3
           host: ${{ matrix.qt-host }}
           target: desktop
           arch: ${{ matrix.qt-arch }}
