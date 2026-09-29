@@ -17,19 +17,69 @@ task, `Kero: Validate Locally`, which calls the source-owned runner.
 
 ## Direction
 
-Local native jobs own package execution. `kero all current` runs shared source
-checks, portable checks, and all locally available package/runtime checks before
-writing evidence under `.heap/`, without GitHub CLI, remote staging, or credentials.
-It separates cross-build output from runtime evidence and records unavailable
-native coverage as partial. `act` provides optional portable/Linux container
-checks; native Windows and macOS checks run only on matching local hosts or
-configured local VMs. Target-specific toolchain requirements remain canonical under
+The immediate return-to priority is a clean-room full build. `Kero: Validate Locally`
+must treat `.heap/` as disposable output, delete and recreate it at the start of
+each run, and then produce the complete unsigned local representation of the
+GitHub build. Nothing required to reproduce a build may exist only in `.heap/`;
+scripts, dependency versions, target definitions, and bootstrap instructions
+remain committed source.
+
+The current runner does not meet that contract: it reaches the enabled
+`linux-x64` target and fails because its WSL builder is unimplemented. This is
+an unresolved build failure, not partial or successful coverage. Resume work by
+making every enabled target build from a freshly recreated heap.
+
+The canonical generated layout is:
+
+```text
+.heap/
+├── build/                         Rust/Cargo and intermediate build output
+├── repo/
+│   ├── stable/                    generated repository channel
+│   ├── beta/                      generated repository channel
+│   └── canary/                    generated repository channel
+├── pages/                         generated documentation site
+├── artifacts/
+│   ├── SHA256SUMS                 checksums for the artifact set
+│   ├── SHA256SUMS.asc             GitHub-produced detached signature
+│   └── distributions/
+│       ├── windows-x86_64.exe
+│       ├── windows-aarch64.exe
+│       ├── linux-x86_64.AppImage
+│       └── linux-aarch64.AppImage
+└── RELEASE.md                     generated release Markdown
+```
+
+Local builds leave `SHA256SUMS.asc` absent because signing belongs exclusively
+to GitHub secrets. GitHub creates the same shape and adds the signature. Build
+tool downloads and transient toolchain state may live beneath `.heap/build/`
+during one run, but the run must bootstrap them again after the heap is deleted.
+Target-specific requirements remain canonical under
 [`product/distribution/`](../../product/distribution/).
 
-The Windows and POSIX `kero` wrappers are equivalent contributor entry points.
-The Linux wrapper resolves Lua, Qt through `qtpaths6`, and `linuxdeploy` from
-the local distribution, then reports missing packages without relying on
-contributor-specific committed paths. `act` runs the same portable Lua stage
+The runner presents every declared top-level action as `Building [...] n/N` on
+one persistent terminal line and writes a complete command/result record to
+`.heap/logs/validate-locally.log` as it proceeds. The record therefore survives
+a failed source check, tool acquisition, or package action. Qt's bundled file
+logger writes to `.heap/logs/<target>/aqtinstall.log` so independent target
+preparation never races for one log file. Preparation follows its declared
+dependency graph concurrently: independent toolchains acquire together, while
+`linux-x64` waits for the ARM64 Qt host kit it explicitly consumes. Builds
+remain sequential because their Cargo and toolchain locations are shared
+clean-room evidence, not a safe parallel work queue.
+
+Downloaded, checksummed dependency inputs are retained beneath
+`.heap/artifacts/dependencies/`. Extracted toolchains, Cargo targets, package
+staging, and release handoff files belong beneath `.heap/build/` and are
+removed after their final artifacts have been published. This keeps one durable
+disposable record of each downloaded input without retaining its much larger
+expanded working tree.
+
+`distribution/actions/kero-build.sh` is the single Bash contributor entry
+point; VS Code launches it through WSL on Windows and never routes validation
+through PowerShell. The runner requires the pinned Lune Luau VM in that WSL
+distribution and reports the exact installation command before work begins if
+it is absent. `act` runs the same portable Luau stage
 inside a Linux container when both it and Docker are installed. The repository
 `.actrc` supplies the shared image mapping but no secrets, tokens, or automatic
 installation; it never substitutes for native desktop evidence.
@@ -59,6 +109,6 @@ pipeline and disposable output live there.
 
 ## Next evidence
 
-Verify a clean clone can make an unsigned current-host package, record partial
-coverage accurately, and reject a candidate proposal until a clean commit and
-complete native evidence exist.
+Verify that two consecutive full runs both begin from no heap, recreate the
+canonical tree, produce all enabled unsigned distributions and aggregate
+checksums, and reject a candidate proposal until complete native evidence exists.

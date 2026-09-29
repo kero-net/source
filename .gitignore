@@ -16,8 +16,5 @@
 .env.*
 !.env.example
 
-# Local distribution config (IF THE USER BUILDS ONE)
-/distribution.local.kst
-
 # KERO machine/runtime state
 /.kero/.runtime/

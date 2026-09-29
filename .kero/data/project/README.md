@@ -10,11 +10,13 @@ kero-net/
 ├── .github/      github.com/kero-net/.github
 ├── source/       github.com/kero-net/src
 ├── kero/         github.com/kero-net/kero
-└── source/.heap/ ignored local publication, cache, and test output
+└── source/.heap/ ignored, fully disposable build and publication output
 ```
 
 Each direct repository child is independently versioned. `source/.heap/` is
-disposable and is never a source of truth.
+deleted and recreated by a full build, and is never a source of truth. Its
+canonical generated shape is owned by
+[`development/contributor-tooling.md`](development/contributor-tooling.md).
 
 - [`repositories/`](repositories/) defines repository ownership.
 - [`publication/`](publication/) defines source-to-channel publication.

@@ -118,7 +118,7 @@ if(WIN32)
   if(MSVC)
     add_custom_target(kero-package
       COMMAND ${CMAKE_COMMAND} --install "${CMAKE_BINARY_DIR}" --prefix "${CMAKE_BINARY_DIR}/stage"
-      COMMAND "${KERO_DEPLOY_TOOL}" --dir "${CMAKE_BINARY_DIR}/stage/bin" --compiler-runtime "${CMAKE_BINARY_DIR}/stage/bin/kero-install.exe"
+      COMMAND "${KERO_DEPLOY_TOOL}" --dir "${CMAKE_BINARY_DIR}/stage/bin" --compiler-runtime --no-system-dxc-compiler "${CMAKE_BINARY_DIR}/stage/bin/kero-install.exe"
       COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/resources/kero.qss" "${CMAKE_BINARY_DIR}/stage/bin/kero.qss"
       COMMAND ${CMAKE_CPACK_COMMAND} --config "${CMAKE_BINARY_DIR}/CPackConfig.cmake"
       DEPENDS kero-install kero-app kero-uninstall
@@ -126,7 +126,7 @@ if(WIN32)
   else()
     add_custom_target(kero-package
       COMMAND ${CMAKE_COMMAND} --install "${CMAKE_BINARY_DIR}" --prefix "${CMAKE_BINARY_DIR}/stage"
-      COMMAND "${KERO_DEPLOY_TOOL}" --dir "${CMAKE_BINARY_DIR}/stage/bin" "${CMAKE_BINARY_DIR}/stage/bin/kero-install.exe"
+      COMMAND "${KERO_DEPLOY_TOOL}" --dir "${CMAKE_BINARY_DIR}/stage/bin" --no-system-dxc-compiler "${CMAKE_BINARY_DIR}/stage/bin/kero-install.exe"
       COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/resources/kero.qss" "${CMAKE_BINARY_DIR}/stage/bin/kero.qss"
       COMMAND ${CMAKE_COMMAND} -E copy_if_different "${KERO_RUNTIME_DIR}/libc++.dll" "${CMAKE_BINARY_DIR}/stage/bin/libc++.dll"
       COMMAND ${CMAKE_COMMAND} -E copy_if_different "${KERO_RUNTIME_DIR}/libunwind.dll" "${CMAKE_BINARY_DIR}/stage/bin/libunwind.dll"
@@ -209,10 +209,16 @@ if(WIN32)
 elseif(UNIX AND NOT APPLE)
   add_custom_target(kero-linux-appimage
     COMMAND ${CMAKE_COMMAND} -E make_directory "${KERO_RELEASE_DIRECTORY}"
-    COMMAND "$ENV{KERO_LINUXDEPLOY}" --appdir "${CMAKE_BINARY_DIR}/stage"
+    COMMAND ${CMAKE_COMMAND} -E env
+      "LDAI_OUTPUT=${KERO_RELEASE_DIRECTORY}/kero.AppImage"
+      "LDAI_RUNTIME_FILE=$ENV{KERO_APPIMAGE_RUNTIME}"
+      "ARCH=$ENV{KERO_LINUX_ARCH}"
+      "QMAKE=$ENV{KERO_QT_PREFIX}/bin/qmake"
+      "APPIMAGE_EXTRACT_AND_RUN=1"
+      "$ENV{KERO_LINUXDEPLOY}" --appdir "${CMAKE_BINARY_DIR}/stage"
       --executable "${CMAKE_BINARY_DIR}/stage/usr/bin/kero-install"
       --desktop-file "${CMAKE_CURRENT_SOURCE_DIR}/resources/kero.desktop"
-      --icon-file "${CMAKE_CURRENT_SOURCE_DIR}/../../assets/images/kero-icon.png"
+      --icon-file "$ENV{KERO_LINUX_ICON}"
       --output appimage
     DEPENDS kero-package
     WORKING_DIRECTORY "${KERO_RELEASE_DIRECTORY}"

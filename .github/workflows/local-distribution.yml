@@ -8,5 +8,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: apt-get update && apt-get install --yes lua5.4
-      - run: KERO_PORTABLE_WORKFLOW=1 lua5.4 distribution/scripts/local-run.lua portable
+      - run: cargo install lune --version 0.10.5 --locked
+      - run: KERO_PORTABLE_WORKFLOW=1 lune run .github/scripts/distribution-portable.luau

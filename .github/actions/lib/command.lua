@@ -24,7 +24,7 @@ local function invocation(root, program, capture)
   if is_windows and program:match("^cargo ") then
     return windows_native(root, program, capture)
   end
-  if not is_windows and program:match("^cargo ") then
+  if not is_windows and (program:match("^cargo ") or program:match("^cargo%.exe ")) then
     command_line = "cd " .. command.quote(root) .. " && CARGO_TARGET_DIR=.heap/build/cargo/target " .. program
   end
   if capture then command_line = command_line .. " 2>&1" end

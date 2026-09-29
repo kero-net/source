@@ -1,8 +1,0 @@
-# Ignored contributor-owned VM settings. Never store credentials here.
-adapter hyperv
-	# guest KeroWindowsX64
-	# source C:\path\to\source
-
-adapter qemu
-	# image C:\path\to\licensed-guest-image
-	# QEMU guest launch is coming soon; this reserves the adapter name.

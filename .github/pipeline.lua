@@ -47,10 +47,4 @@ for _, step in ipairs(projections) do
   if not ok then io.stderr:write(message, "\n"); os.exit(1) end
 end
 
-local release = lua .. " distribution/scripts/package.lua"
-for _, value in ipairs(arg) do release = release .. " " .. command.quote(value) end
-io.stdout:write("\n==> ", release, "\n")
-local release_ok, release_message = command.run(root, release, true)
-if not release_ok then io.stderr:write(release_message, "\n"); os.exit(1) end
-
 io.stdout:write("\nLocal publication pipeline completed. Push source to let GitHub perform protected publication.\n")

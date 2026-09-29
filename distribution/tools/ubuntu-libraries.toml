@@ -1,0 +1,29 @@
+[tool]
+name = "ubuntu-libraries"
+
+[versions."24.04.3"]
+base-url = "https://archive.ubuntu.com/ubuntu/pool/main/libg/libglvnd"
+
+[[versions."24.04.3".packages]]
+archive = "libglvnd0_1.7.0-1build1_amd64.deb"
+sha256 = "33f5e07c74f73c2bfb44086ae0f9e6da52acd6c104d30ffe8fd768d8253d5e82"
+
+[[versions."24.04.3".packages]]
+archive = "libglx0_1.7.0-1build1_amd64.deb"
+sha256 = "aa4953182f30abde90cb5b072e83d7286b557b325769b8686196a7bd396d8795"
+
+[[versions."24.04.3".packages]]
+archive = "libopengl0_1.7.0-1build1_amd64.deb"
+sha256 = "da36bd4d30c13b40b697fa8b72cc09d309ff36a5bd9750341ef78492bf3f3966"
+
+[[versions."24.04.3".packages]]
+archive = "libgl1_1.7.0-1build1_amd64.deb"
+sha256 = "e2b2fadeb883f073b566ad1d7874f6702397514d258473e96152a89d4d502a09"
+
+[[versions."24.04.3".packages]]
+archive = "libglx-dev_1.7.0-1build1_amd64.deb"
+sha256 = "0e2654950a881c20b640a3af590add2e0b612b8c0fdd945761fc695e1b6eb797"
+
+[[versions."24.04.3".packages]]
+archive = "libopengl-dev_1.7.0-1build1_amd64.deb"
+sha256 = "da50e2804e80391e5c3d7f61af70b41ff6d0d20e4862136ceb8828000637c273"

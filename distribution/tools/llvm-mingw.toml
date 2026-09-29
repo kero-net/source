@@ -1,0 +1,7 @@
+[tool]
+name = "llvm-mingw"
+
+[versions."20260922".aarch64]
+archive = "llvm-mingw-20260922-ucrt-aarch64.zip"
+base-url = "https://github.com/mstorsjo/llvm-mingw/releases/download/20260922"
+sha256 = "a317514a7a63badd692032c0c2b8e165f630bbaebbe7a3254348051f43a64949"

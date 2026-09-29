@@ -1,0 +1,5 @@
+{
+  "luau-lsp.platform.type": "standard",
+  "luau-lsp.analyzeLuaFiles": false,
+  "luau-lsp.sourcemap.enabled": false
+}

@@ -1,5 +1,12 @@
 {
-  "git.ignoreLimitWarning": true,
-  "cmake.configureOnOpen": false,
-  "cmake.sourceDirectory": "${workspaceFolder}/host/qt"
+    "cmake.configureOnOpen": false,
+    "cmake.sourceDirectory": "${workspaceFolder}/host/qt",
+
+    "luau-lsp.platform.type": "standard",
+    "luau-lsp.require.fileAliases": {
+        "@lune": "${workspaceFolder}/.luau-lsp/lune"
+    },
+    "luau-lsp.analyzeLuaFiles": false,
+    "luau-lsp.sourcemap.enabled": false,
+    "luau-lsp.completion.autocompleteEnd": true
 }

@@ -1,0 +1,11 @@
+{
+  "languageMode": "strict",
+  "lint": {
+    "*": true
+  },
+  "lintErrors": true,
+  "typeErrors": true,
+  "aliases": {
+    "lune": "./.luau-lsp/lune/"
+  }
+}
