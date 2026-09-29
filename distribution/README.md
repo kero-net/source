@@ -4,12 +4,20 @@ This directory owns desktop-package facts and mechanics: target definitions,
 toolchain requirements, package assembly, checksums, detached signatures, and
 artifact verification. It does not select repository channels or publish.
 
-`builds.json` is the human-owned target contract. `scripts/` runs
-that contract locally; generated packages, logs, and evidence remain below
-`.heap/`.
+`actions/kero-build.sh` is the only executable distribution entry point. It
+accepts no target or stage: it builds every enabled distribution, or fails.
+On Windows, VS Code launches this same file directly through a profile-free
+WSL Bash process. VS Code exposes exactly that command as `Kero: Validate
+Locally`.
 
-The KST registries are the sole editable target and toolchain sources.
-`Cargo.toml` and other external-tool manifests are outside this migration.
+`builds/*/build.toml` defines one distribution per directory. `tools/*.toml`
+defines every external dependency once, including version, location, checksum,
+and extraction facts. `scripts/build/build-every-distribution.luau` is the only
+executable Luau file; all other Luau code is a module under `lib/`. Lune is the
+pinned standalone Luau VM used by the build boundary.
+
+A full run deletes and recreates `.heap/`; no generated file or downloaded
+tool may be required as an unstated input to the next run.
 
 Each target declares its matching native host and toolchain. A package build
 must use that exact pairing; compiler families, Qt kits, and runtime deployment
@@ -19,28 +27,52 @@ environment configuration and are never committed.
 Repository release records and canary/beta/stable publication remain under
 `releases/` because they are a separate repository-release subsystem.
 
-## Local native validation
+## Generated heap contract
 
-`distribution/tests/` owns package-contract, architecture, and startup checks.
-`kero build TARGET` creates and statically validates an artifact. `kero verify
-TARGET` repeats static validation. `kero test TARGET --adapter NAME` adds the
-bounded runtime check and records whether execution was native, emulated, or a
-VM. Cross-build output never becomes native release evidence.
+The full build produces one clear disposable tree:
 
-On Windows, run `./kero.cmd build current`; on Linux, run `./kero build
-current`. These action wrappers locate the local target toolchain and invoke
-Lua internally. The Linux wrapper discovers `lua`/`lua5.4`, Qt through
-`qtpaths6`, and `linuxdeploy` from `PATH`, with environment-variable overrides
-for nonstandard installations. `portable` runs portable contracts and, when installed, the
-local `act` workflow. `all` records the available local
-coverage and marks unavailable native targets as partial rather than release
-evidence. `verify TARGET` validates a package already under `.heap/`.
+```text
+.heap/
+├── build/                         expanded tools and compiler intermediates
+├── repo/{stable,beta,canary}/     generated repository channels
+├── pages/                         generated pages
+├── logs/                          complete run and target-scoped logs
+├── artifacts/
+│   ├── dependencies/              verified downloaded build inputs
+│   ├── SHA256SUMS
+│   ├── SHA256SUMS.asc             GitHub only; absent from unsigned local builds
+│   └── distributions/
+│       ├── windows-x86_64.exe
+│       ├── windows-aarch64.exe
+│       ├── linux-x86_64.AppImage
+│       └── linux-aarch64.AppImage
+└── RELEASE.md
+```
 
-`kero all current` is the standard local validation run: it starts with shared
-source checks, then portable checks, then builds/tests every target the current
-host can validate. Missing native toolchains or hosts are recorded in
-`.heap/distribution/summary.toml` as partial coverage; failed available checks
-still fail the command.
+Completed release-shaped files belong only in `artifacts/`; build directories
+must not double as the artifact interface. The local build matches GitHub's
+shape but never signs. GitHub uses protected secrets to add the aggregate
+checksum signature.
+
+## Local validation
+
+Run **Kero: Validate Locally**. It is the only contributor build command. The
+orchestrator validates manifests, runs source and portable checks, prepares
+independent target inputs concurrently, and serializes package builds as soon
+as each target becomes ready. Each verified package is published immediately;
+it does not wait for unrelated targets.
+It reports the declared top-level actions as `Building [...] n/N` and writes
+the same command/result evidence to `.heap/logs/validate-locally.log`. Target
+specific acquisition records live below `.heap/logs/<target>/`.
+Downloaded dependency archives are retained under `.heap/artifacts/dependencies`;
+their extracted toolchains, Cargo output, and package staging are working state
+under `.heap/build/` and are removed after successful publication. Preparation
+is dependency-aware and concurrent; package compilation remains serialized.
+If a later target fails, earlier verified artifacts and their checksums remain,
+and `RELEASE.md` marks the run incomplete.
+
+`act` is optional Linux-container parity and is not required for ordinary local
+validation. It contains no secret, token, or local state.
 
 For a Windows ARM64 package, the wrapper requires the Qt `msvc2022_arm64` kit
 and the matching Visual Studio ARM64 target compiler. It refuses to use an x64
@@ -59,11 +91,5 @@ Only GitHub's protected `release` environment sets `KERO_SIGN_RELEASE=1` and
 receives the release signing key. It publishes the signed packages; local and
 pull-request outputs remain deliberately unsigned.
 
-Windows ARM64 can cross-build the configured LLVM-MinGW Windows x64 target.
-`kero test windows-x64 --adapter emulated` is opt-in on Windows ARM64 and is
-recorded as emulated evidence. Optional Hyper-V and QEMU settings belong in
-ignored `distribution.local.kst`; copy `distribution.local.kst.example` to
-start. QEMU never downloads guest images or credentials.
-
-macOS ARM64 is currently **coming soon**, not enabled release coverage. A DMG
-requires Apple tools and a matching Qt kit on a Mac contributor host.
+Windows ARM64 cross-builds the configured LLVM-MinGW Windows x64 target.
+Downloaded inputs remain disposable under `.heap/`.

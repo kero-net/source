@@ -411,7 +411,7 @@ int runKeroInstaller(int argc, char* argv[]) {
         wizard.button(QWizard::BackButton)->hide();
         wizard.button(QWizard::NextButton)->setEnabled(false);
         wizard.button(QWizard::CancelButton)->setEnabled(false);
-        QTimer::singleShot(0, &wizard, [&wizard, &form] {
+        QMetaObject::invokeMethod(&wizard, [&wizard, &form] {
             form.installStatusLabel->setText("Installing KERO...");
             form.installProgressBar->setValue(20);
             form.installDetailsTextEdit->appendPlainText("Copying the KERO runtime bundle...");
@@ -442,7 +442,7 @@ int runKeroInstaller(int argc, char* argv[]) {
             wizard.button(QWizard::NextButton)->setEnabled(true);
             wizard.button(QWizard::NextButton)->setText("Continue");
             wizard.button(QWizard::CancelButton)->setEnabled(true);
-        });
+        }, Qt::QueuedConnection);
     });
     QObject::connect(&wizard, &QDialog::finished, &wizard, [&form](int result) {
         if (result != QDialog::Accepted) return;

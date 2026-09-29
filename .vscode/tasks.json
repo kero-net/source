@@ -4,14 +4,22 @@
         {
             "label": "Kero: Validate Locally",
             "type": "process",
-            "command": "${workspaceFolder}/kero",
+            "command": "${workspaceFolder}/distribution/actions/kero-build.sh",
+            "args": [],
             "windows": {
-                "command": "${workspaceFolder}\\kero.cmd"
+                "command": "wsl.exe",
+                "args": [
+                    "--exec",
+                    "/bin/bash",
+                    "--noprofile",
+                    "--norc",
+                    "-lc",
+                    "exec \"$(wslpath '${workspaceFolder}')/distribution/actions/kero-build.sh\""
+                ]
             },
-            "args": [
-                "all",
-                "current"
-            ],
+            "presentation": {
+                "panel": "new"
+            },
             "group": "test",
             "problemMatcher": []
         }

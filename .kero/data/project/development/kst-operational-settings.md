@@ -11,8 +11,7 @@ format and ownership contract remains under
 
 | Setting family | Current owner | Current consumers | Migration order |
 |---|---|---|---|
-| distribution targets, hosted build inputs, and signing-variable names | `distribution/builds.json` | package, local-run, validation scripts, and both hosted workflows | complete |
-| contributor VM adapters | ignored `distribution.local.kst` | adapter, Hyper-V, local-run scripts | complete |
+| distribution targets, hosted build inputs, and signing-variable names | `distribution/builds/*/build.toml`, `distribution/tools/*.toml`, and `distribution/policy.toml` | the complete distribution build and hosted workflows | complete |
 | repository publication settings | `repo/config.kst` | repository build and publication action | complete |
 | localization catalogs | `i18n/*.toml` | renderer, validator, publication checks | separate content-schema migration |
 
@@ -25,7 +24,7 @@ the formats required by those tools.
 
 ## Distribution target registry
 
-`distribution/builds.json` replaces `distribution/distribution.kst` and
+The TOML manifest tree under `distribution/builds/` replaces `distribution/distribution.kst` and
 `distribution/toolchains.kst`. It owns each target's artifact, native host,
 local requirements, hosted runner, Qt kit/version, compiler architecture, and
 signing-variable names. One shared Lua reader serves package, orchestration,

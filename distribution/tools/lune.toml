@@ -1,0 +1,5 @@
+[tool]
+name = "lune"
+version = "0.10.5"
+executable = "lune"
+purpose = "Luau build runtime"

@@ -1,0 +1,7 @@
+[tool]
+name = "qemu"
+
+[versions."8.2.2-0ubuntu1.18".aarch64]
+archive = "qemu-user-static_8.2.2+ds-0ubuntu1.18_arm64.deb"
+url = "https://ports.ubuntu.com/ubuntu-ports/pool/universe/q/qemu/qemu-user-static_8.2.2%2bds-0ubuntu1.18_arm64.deb"
+sha256 = "0565144632acc09b92da93e5ef9a2f44fa092797c5b0949744351b184ad948a8"

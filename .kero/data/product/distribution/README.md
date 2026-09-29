@@ -26,9 +26,20 @@ evidence before a candidate may be proposed. Runtime records state `native`,
 `emulated`, or `vm`; an emulated Windows x64 test on Windows ARM64 is useful
 diagnostic evidence and is never relabelled native.
 
-Optional Hyper-V and QEMU adapters are local contributor configuration, not
-dependencies. macOS ARM64 is coming soon until a Mac contributor supplies the
-Apple toolchain and native evidence.
+Downloaded build toolchains are disposable state under `.heap`, not
+machine-local source configuration. A full build starts by deleting `.heap/`
+and bootstraps every needed disposable tool again from committed definitions.
+Therefore `.heap/` must never be an implicit prerequisite for a later run.
+
+Completed distribution artifacts are assembled together beneath
+`.heap/artifacts/distributions/`. `.heap/artifacts/SHA256SUMS` covers that set;
+GitHub adds `.heap/artifacts/SHA256SUMS.asc` using protected secrets, while
+local builds remain unsigned. `.heap/RELEASE.md` is the generated release
+description. Intermediate Rust, Cargo, Qt, and downloaded toolchain data belongs
+under `.heap/build/`, separate from completed artifacts.
+
+macOS remains future work until its final target and native evidence contract
+are selected.
 
 Human-editable KERO-owned operational settings migrate to KERO Structured Text
 incrementally with their owning subsystem. Existing TOML remains in place until

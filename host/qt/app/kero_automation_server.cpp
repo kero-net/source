@@ -59,7 +59,10 @@ void reply(QTcpSocket* socket, const QJsonObject& response) {
 }
 
 QJsonObject failure(const QString& message) {
-    return QJsonObject{{"ok", false}, {"error", message}};
+    QJsonObject response;
+    response.insert("ok", false);
+    response.insert("error", message);
+    return response;
 }
 } // namespace
 
@@ -103,13 +106,19 @@ void KeroAutomationServer::handleRequest(QTcpSocket* socket, const QByteArray& r
 
     const QString method = command.value("method").toString();
     if (method == "inspect") {
-        reply(socket, QJsonObject{{"ok", true}, {"window", describeWidget(window_)},
-                                  {"widgets", inspectWidgets(window_)}});
+        QJsonObject response;
+        response.insert("ok", true);
+        response.insert("window", describeWidget(window_));
+        response.insert("widgets", inspectWidgets(window_));
+        reply(socket, response);
         return;
     }
     if (method == "screenshot") {
-        reply(socket, QJsonObject{{"ok", true}, {"mimeType", "image/png"},
-                                  {"data", QString::fromLatin1(screenshot(window_))}});
+        QJsonObject response;
+        response.insert("ok", true);
+        response.insert("mimeType", "image/png");
+        response.insert("data", QString::fromLatin1(screenshot(window_)));
+        reply(socket, response);
         return;
     }
 
@@ -156,5 +165,7 @@ void KeroAutomationServer::handleRequest(QTcpSocket* socket, const QByteArray& r
     }
 
     QApplication::processEvents();
-    reply(socket, QJsonObject{{"ok", true}});
+    QJsonObject response;
+    response.insert("ok", true);
+    reply(socket, response);
 }

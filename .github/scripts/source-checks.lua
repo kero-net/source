@@ -6,14 +6,15 @@ package.path = root .. "/.github/actions/?.lua;" .. package.path
 local command = require("lib.command")
 local lua = os.getenv("KERO_LUA") or "lua"
 local luac = os.getenv("KERO_LUAC") or "luac"
+local cargo = os.getenv("KERO_CARGO") or "cargo"
 local group = arg[1] or "local"
 
 local checks = {
   contracts = { "" .. lua .. " .github/scripts/repository-contracts.lua", "git diff --check" },
   rust = {
-    "cargo fmt --manifest-path src/Cargo.toml --all --check",
-    "cargo clippy --manifest-path src/Cargo.toml --all-targets --all-features --locked -- -D warnings",
-    "cargo test --manifest-path src/Cargo.toml --all-targets --locked",
+    cargo .. " fmt --manifest-path src/Cargo.toml --all --check",
+    cargo .. " clippy --manifest-path src/Cargo.toml --all-targets --all-features --locked -- -D warnings",
+    cargo .. " test --manifest-path src/Cargo.toml --all-targets --locked",
   },
   automation = {
     "find .github -name '*.lua' -print0 | xargs -0 -n1 " .. luac .. " -p",
@@ -26,8 +27,12 @@ local checks = {
     lua .. " .github/actions/publish/tests/policy.lua", lua .. " .github/actions/publish/tests/preflight.lua",
   },
   documentation = { "groff -z -mandoc src/man/kero.1" },
-  pages = { lua .. " pages/build.lua .heap/validation/pages" },
-  repository = { lua .. " repo/build.lua canary .heap/validation/repository unreleased" },
+  pages = { lua .. " pages/build.lua .heap/pages" },
+  repository = {
+    lua .. " repo/build.lua stable .heap/repo/stable unreleased",
+    lua .. " repo/build.lua beta .heap/repo/beta unreleased",
+    lua .. " repo/build.lua canary .heap/repo/canary unreleased",
+  },
 }
 
 local function run(name, optional)

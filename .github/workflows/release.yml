@@ -90,7 +90,7 @@ jobs:
       - name: Validate optional release key
         env:
           KERO_GPG_KEY_ID: ${{ vars.KERO_GPG_KEY_ID }}
-        run: lua5.4 distribution/scripts/validate-key.lua
+        run: lune run .github/scripts/distribution-signing-key.luau
 
   package-plan:
     name: Package Plan
@@ -104,9 +104,9 @@ jobs:
         with:
           ref: ${{ inputs.source-sha }}
           persist-credentials: false
-      - run: sudo apt-get update && sudo apt-get install --yes lua5.4
+      - run: cargo install lune --version 0.10.5 --locked
       - id: plan
-        run: echo "matrix=$(lua5.4 distribution/scripts/hosted-matrix.lua)" >> "$GITHUB_OUTPUT"
+        run: echo "matrix=$(lune run .github/scripts/distribution-matrix.luau)" >> "$GITHUB_OUTPUT"
 
   build-release-packages:
     name: Sign package (${{ matrix.target }})
@@ -128,10 +128,13 @@ jobs:
         run: sudo apt-get update && sudo apt-get install --yes lua5.4 gnupg
       - name: Set up Lua
         if: runner.os == 'Windows'
-        shell: pwsh
+        shell: cmd
         run: choco install lua gnupg --yes --no-progress
       - name: Install WASM core target
         run: rustup target add wasm32-wasip1
+      - name: Set up Lune
+        shell: bash
+        run: cargo install lune --version 0.10.5 --locked
       - name: Set up MSVC
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
@@ -147,14 +150,17 @@ jobs:
           cache: true
       - name: Configure package environment
         if: runner.os == 'Windows'
-        shell: pwsh
+        shell: bash
         run: |
-          "KERO_QT_PREFIX=$env:QT_ROOT_DIR" >> $env:GITHUB_ENV
-          "KERO_CXX_COMPILER=cl.exe" >> $env:GITHUB_ENV
-          if ('${{ matrix.target }}' -eq 'windows-arm64') {
-            "KERO_MSVC_LINKER=$((Get-Command link.exe).Source)" >> $env:GITHUB_ENV
-            "KERO_MSVC_ARCHIVER=$((Get-Command lib.exe).Source)" >> $env:GITHUB_ENV
-          }
+          echo "KERO_QT_PREFIX=$QT_ROOT_DIR" >> "$GITHUB_ENV"
+          echo "KERO_CXX_COMPILER=cl.exe" >> "$GITHUB_ENV"
+          if [[ '${{ matrix.target }}' == 'windows-arm64' ]]; then
+            linker="$(where.exe link.exe | head -n 1 | tr -d '\r')"
+            archiver="$(where.exe lib.exe | head -n 1 | tr -d '\r')"
+            echo "KERO_MSVC_LINKER=$linker" >> "$GITHUB_ENV"
+            echo "KERO_MSVC_LINKER_POSIX=$linker" >> "$GITHUB_ENV"
+            echo "KERO_MSVC_ARCHIVER=$archiver" >> "$GITHUB_ENV"
+          fi
       - name: Install Linux AppImage tooling
         if: runner.os == 'Linux'
         shell: bash
@@ -181,8 +187,10 @@ jobs:
           echo "KERO_GPG_KEY_ID=$KERO_GPG_KEY_ID" >> "$GITHUB_ENV"
           echo "KERO_GPG_COMMAND=$RUNNER_TEMP/kero-gpg" >> "$GITHUB_ENV"
       - name: Build signed package
+        env:
+          KERO_BUILD_TARGET: ${{ matrix.target }}
         shell: bash
-        run: ${{ matrix.lua }} distribution/scripts/package.lua "${{ matrix.target }}"
+        run: lune run .github/scripts/distribution-package.luau
       - name: Upload signed package
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

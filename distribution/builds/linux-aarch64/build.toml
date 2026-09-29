@@ -1,0 +1,34 @@
+[distribution]
+id = "linux-arm64"
+enabled = true
+lifecycle = "active"
+platform = "linux"
+architecture = "aarch64"
+artifact = "kero.AppImage"
+final-artifact = "linux-aarch64.AppImage"
+native-host = "linux-arm64"
+preset = "linux-arm64"
+
+[rust]
+target = "aarch64-unknown-linux-gnu"
+
+[qt]
+version = "6.8.3"
+host = "linux_arm64"
+architecture = "linux_gcc_arm64"
+directory = "gcc_arm64"
+
+[builder]
+kind = "wsl-linux"
+distribution = "Ubuntu"
+linuxdeploy-architecture = "aarch64"
+cross = false
+
+[dependencies]
+aqtinstall = "3.3.0"
+linuxdeploy = "1-alpha-20251107-1"
+appimage-runtime = "20251108"
+
+[hosted]
+runner = "ubuntu-24.04-arm"
+lua = "lua5.4"

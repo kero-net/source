@@ -3,26 +3,15 @@
 This branch contains source-workflow and implementation-progress knowledge. It
 may change as tooling changes without redefining KERO product semantics.
 
-## Current local distribution entry points
+## Current local distribution entry point
 
-The source-owned wrapper builds a local development package for the current
-host target:
-
-```text
-kero.cmd build current    # Windows
-./kero build current      # Linux or macOS
-```
-
-The wrappers invoke the Lua distribution runner internally. A build creates a
-package, checksum, and static validation record beneath `.heap/`; it does not
-need GitHub CLI, credentials, a clean Git tree, or a signing key. Runtime
-testing is separate (`kero.cmd test current --adapter native` or
-`./kero test current --adapter native`) because a cross-build cannot prove a
-native loader or runtime dependency.
+VS Code exposes one task: **Kero: Validate Locally**. It calls the matching
+`distribution/actions/kero-build` shell adapter, accepts no target or stage,
+and builds every enabled distribution from one validated plan.
 
 `act` is an optional portable/Linux-container check. It never represents a
 Windows or macOS virtual-machine test. Native desktop testing runs on the
-matching local host or an explicitly configured local adapter. Canonical
+matching local host or supported emulation. Canonical
 target, toolchain, evidence, and release rules live under
 [`../../product/distribution/`](../../product/distribution/).
 

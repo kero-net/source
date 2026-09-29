@@ -3,6 +3,6 @@
     "rust-lang.rust-analyzer",
     "ms-vscode.cpptools",
     "ms-vscode.cmake-tools",
-    "sumneko.lua"
+    "JohnnyMorganz.luau-lsp"
   ]
 }
