@@ -53,6 +53,7 @@ function GitHubBuildMatrix.Create(root: string): string
 				local llvm = configuration.tools.llvmMingwX64
 				table.insert(fields, assert(field("llvm_mingw_version", llvm.version)))
 				table.insert(fields, assert(field("llvm_mingw_archive", llvm.archive)))
+				table.insert(fields, assert(field("llvm_mingw_base_url", llvm.baseUrl)))
 				table.insert(fields, assert(field("llvm_mingw_sha256", llvm.sha256)))
 			end
 
