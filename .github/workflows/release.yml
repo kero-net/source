@@ -159,7 +159,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.package-plan.outputs.matrix) }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.target == 'windows-arm64' && fromJSON('["self-hosted","Windows","ARM64"]') || matrix.os }}
     steps:
       - name: Check out validated source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
