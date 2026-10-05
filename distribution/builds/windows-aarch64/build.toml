@@ -1,0 +1,36 @@
+[distribution]
+id = "windows-arm64"
+enabled = true
+lifecycle = "active"
+platform = "windows"
+architecture = "aarch64"
+artifact = "kero-installer.exe"
+final-artifact = "windows-aarch64.exe"
+native-host = "windows-arm64"
+preset = "windows-arm64"
+
+[rust]
+target = "aarch64-pc-windows-msvc"
+
+[qt]
+version = "6.8.3"
+host = "windows"
+architecture = "win64_msvc2022_arm64_cross_compiled"
+directory = "msvc2022_arm64"
+host-architecture = "win64_msvc2022_64"
+
+[builder]
+kind = "windows-msvc"
+msvc-architecture = "arm64"
+installer-package = "Microsoft.VisualStudio.2022.BuildTools"
+install-components = [
+  "Microsoft.VisualStudio.Workload.VCTools",
+  "Microsoft.VisualStudio.Component.VC.Tools.ARM64",
+  "Microsoft.VisualStudio.Component.Windows11SDK.26100",
+]
+
+[dependencies]
+aqtinstall = "3.3.0"
+
+[hosted]
+runner = "windows-11-arm"

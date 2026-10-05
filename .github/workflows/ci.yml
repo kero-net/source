@@ -22,33 +22,40 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Set up Lua
-        run: sudo apt-get update && sudo apt-get install --yes lua5.4
+      - name: Set up Lune
+        uses: ./.github/actions/setup-lune
       - name: Validate source branch
         uses: ./.github/actions/branches
         with:
           branch: ${{ github.event.pull_request.base.ref || github.ref_name }}
           kind: source
       - name: Validate repository shape
-        run: lua5.4 .github/scripts/repository-contracts.lua
-      - name: Validate Git whitespace
-        run: git diff --check
+        run: lune run .github/scripts/source-checks.luau contracts
 
   rust:
-    name: Rust
+    name: Rust (${{ matrix.os }})
     needs: repository-contracts
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+          - os: macos-latest
+          - os: windows-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Check formatting
-        run: cargo fmt --manifest-path code/Cargo.toml --all --check
-      - name: Run Clippy
-        run: cargo clippy --manifest-path code/Cargo.toml --all-targets --all-features -- -D warnings
-      - name: Run tests
-        run: cargo test --manifest-path code/Cargo.toml --all-targets --locked
+      - name: Install WASM core target
+        run: rustup target add wasm32-wasip1
+      - name: Check Rust formatting
+        run: cargo fmt --manifest-path src/Cargo.toml --all --check
+      - name: Check Rust lints
+        run: cargo clippy --manifest-path src/Cargo.toml --all-targets --all-features --locked -- -D warnings
+      - name: Test Rust
+        run: cargo test --manifest-path src/Cargo.toml --all-targets --locked
 
   github-actions:
     name: GitHub Actions
@@ -59,14 +66,10 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Set up Lua
-        run: sudo apt-get update && sudo apt-get install --yes lua5.4
-      - name: Parse automation Lua
-        run: find .github -name '*.lua' -print0 | xargs -0 -n1 luac5.4 -p
-      - name: Test workflow contracts
-        run: lua5.4 .github/tests/workflows.lua
-      - name: Validate actions and workflows
-        run: lua5.4 .github/scripts/actionlint.lua
+      - name: Set up Lune
+        uses: ./.github/actions/setup-lune
+      - name: Run shared automation checks
+        run: lune run .github/scripts/source-checks.luau automation
 
   documentation:
     name: Documentation
@@ -79,8 +82,8 @@ jobs:
           persist-credentials: false
       - name: Set up groff
         run: sudo apt-get update && sudo apt-get install --yes groff
-      - name: Validate manpage
-        run: groff -z -mandoc code/man/kero.1
+      - name: Check manpage
+        run: groff -z -mandoc src/man/kero.1
 
   localization:
     name: Localization
@@ -91,10 +94,10 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Set up Lua
-        run: sudo apt-get update && sudo apt-get install --yes lua5.4
-      - name: Validate localization
-        run: lua5.4 i18n/validate.lua
+      - name: Set up Lune
+        uses: ./.github/actions/setup-lune
+      - name: Run shared localization checks
+        run: lune run .github/scripts/source-checks.luau localization
 
   release-system:
     name: Release System
@@ -105,18 +108,10 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Set up Lua
-        run: sudo apt-get update && sudo apt-get install --yes lua5.4
-      - name: Test release IDs
-        run: lua5.4 releases/tests/id.lua
-      - name: Test release records
-        run: lua5.4 releases/tests/records.lua
-      - name: Test release sequencing
-        run: lua5.4 releases/tests/sequence.lua
-      - name: Test publication policy
-        run: lua5.4 .github/actions/publish/tests/policy.lua
-      - name: Test publisher preflight
-        run: lua5.4 .github/actions/publish/tests/preflight.lua
+      - name: Set up Lune
+        uses: ./.github/actions/setup-lune
+      - name: Run shared release-system checks
+        run: lune run .github/scripts/source-checks.luau release
 
   build-pages:
     name: Build Pages
@@ -128,7 +123,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Pages tooling
-        run: sudo apt-get update && sudo apt-get install --yes lua5.4 pandoc
+        run: sudo apt-get update && sudo apt-get install --yes pandoc
+      - name: Set up Lune
+        uses: ./.github/actions/setup-lune
       - name: Build Pages
         uses: ./.github/actions/build-pages
         with:
@@ -149,7 +146,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up repository tooling
-        run: sudo apt-get update && sudo apt-get install --yes lua5.4 pandoc
+        run: sudo apt-get update && sudo apt-get install --yes pandoc
+      - name: Set up Lune
+        uses: ./.github/actions/setup-lune
       - name: Build generated repository
         uses: ./.github/actions/build-repo
         with:
@@ -198,10 +197,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Set up Lua
-        run: sudo apt-get update && sudo apt-get install --yes lua5.4
       - name: Validate dependency inputs
-        run: lua5.4 .github/scripts/dependency-inputs.lua
+        run: test -f src/Cargo.lock && test -f .github/dependabot.yml
       - name: Review dependency changes
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
@@ -245,3 +242,33 @@ jobs:
             exit 1
           fi
           echo "All required CI jobs succeeded"
+
+  publication-decision:
+    name: Publication Decision
+    if: always()
+    needs: ci-gate
+    runs-on: ubuntu-latest
+    outputs:
+      publish: ${{ steps.policy.outputs.publish }}
+    steps:
+      - id: policy
+        env:
+          CI_GATE_RESULT: ${{ needs.ci-gate.result }}
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          publish=false
+          if [ "$CI_GATE_RESULT" = "success" ] && [ "$EVENT_NAME" = "push" ] && [ "$REF_NAME" = "source" ]; then publish=true; fi
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+
+  publication:
+    name: Publication
+    if: always() && needs.publication-decision.outputs.publish == 'true'
+    needs: publication-decision
+    permissions:
+      actions: read
+      contents: write
+      checks: read
+    uses: ./.github/workflows/release.yml
+    with:
+      source-sha: ${{ github.sha }}

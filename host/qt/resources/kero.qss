@@ -1,0 +1,10 @@
+/*
+ * KERO deliberately leaves the palette and native controls to Qt's platform
+ * style. In particular, button, progress-bar, frame, and background colors
+ * must follow the user's Windows theme/accent instead of KERO hard-coding a
+ * palette here.
+ */
+QLabel#title {
+    font-size: 32px;
+    font-weight: 700;
+}

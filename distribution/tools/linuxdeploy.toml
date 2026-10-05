@@ -1,0 +1,13 @@
+[tool]
+name = "linuxdeploy"
+
+[versions."1-alpha-20251107-1"]
+base-url = "https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20251107-1"
+
+[versions."1-alpha-20251107-1".x86_64]
+archive = "linuxdeploy-x86_64.AppImage"
+sha256 = "c20cd71e3a4e3b80c3483cef793cda3f4e990aca14014d23c544ca3ce1270b4d"
+
+[versions."1-alpha-20251107-1".aarch64]
+archive = "linuxdeploy-aarch64.AppImage"
+sha256 = "620095110d693282b8ebeb244a95b5e911cf8f65f76c88b4b47d16ae6346fcff"

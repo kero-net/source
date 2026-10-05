@@ -14,7 +14,7 @@ runs:
   steps:
     - shell: bash
       run: >-
-        lua5.4 repo/build.lua
+        lune run repo/build.luau
         "${{ inputs.channel }}"
         "${{ inputs.destination }}"
         "${{ inputs.version }}"

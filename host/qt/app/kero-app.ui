@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>KeroMainWindow</class>
+ <widget class="QMainWindow" name="KeroMainWindow">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>1120</width><height>720</height></rect>
+  </property>
+  <property name="minimumSize"><size><width>920</width><height>600</height></size></property>
+  <property name="windowTitle"><string>KERO</string></property>
+  <property name="windowIcon">
+   <iconset resource="../resources/kero.qrc">
+    <normaloff>:/images/kero-icon.png</normaloff>:/images/kero-icon.png
+   </iconset>
+  </property>
+  <widget class="QWidget" name="centralWidget">
+   <layout class="QHBoxLayout" name="rootLayout">
+    <property name="spacing"><number>0</number></property>
+    <property name="leftMargin"><number>0</number></property>
+    <property name="topMargin"><number>0</number></property>
+    <property name="rightMargin"><number>0</number></property>
+    <property name="bottomMargin"><number>0</number></property>
+    <item>
+     <widget class="QFrame" name="sidebarFrame">
+      <property name="minimumSize"><size><width>210</width><height>0</height></size></property>
+      <property name="maximumSize"><size><width>210</width><height>16777215</height></size></property>
+      <property name="frameShape"><enum>QFrame::StyledPanel</enum></property>
+      <property name="frameShadow"><enum>QFrame::Plain</enum></property>
+      <layout class="QVBoxLayout" name="sidebarLayout">
+       <property name="leftMargin"><number>12</number></property>
+       <property name="topMargin"><number>16</number></property>
+       <property name="rightMargin"><number>12</number></property>
+       <property name="bottomMargin"><number>16</number></property>
+       <property name="spacing"><number>10</number></property>
+       <item>
+        <layout class="QHBoxLayout" name="brandLayout">
+         <item>
+          <widget class="QLabel" name="brandIconLabel">
+           <property name="minimumSize"><size><width>34</width><height>34</height></size></property>
+           <property name="maximumSize"><size><width>34</width><height>34</height></size></property>
+           <property name="pixmap"><pixmap resource="../resources/kero.qrc">:/images/kero-icon.png</pixmap></property>
+           <property name="scaledContents"><bool>true</bool></property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="brandLabel">
+           <property name="font"><font><pointsize>15</pointsize><bold>true</bold></font></property>
+           <property name="text"><string>KERO</string></property>
+          </widget>
+         </item>
+         <item><spacer name="brandHorizontalSpacer"><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>20</height></size></property></spacer></item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QListWidget" name="navigationList">
+         <property name="minimumSize"><size><width>0</width><height>220</height></size></property>
+         <property name="frameShape"><enum>QFrame::NoFrame</enum></property>
+         <property name="horizontalScrollBarPolicy"><enum>Qt::ScrollBarAlwaysOff</enum></property>
+         <property name="selectionMode"><enum>QAbstractItemView::SingleSelection</enum></property>
+         <property name="currentRow"><number>0</number></property>
+         <item><property name="text"><string>Overview</string></property></item>
+         <item><property name="text"><string>Knowledge</string></property></item>
+         <item><property name="text"><string>Mounts</string></property></item>
+         <item><property name="text"><string>Policy</string></property></item>
+         <item><property name="text"><string>Settings</string></property></item>
+        </widget>
+       </item>
+       <item><spacer name="sidebarSpacer"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>80</height></size></property></spacer></item>
+       <item><widget class="QLabel" name="projectContextLabel"><property name="text"><string>Project: none</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
+       <item><widget class="QLabel" name="globalContextLabel"><property name="text"><string>Global: ~/.kero</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
+       <item><widget class="QLabel" name="environmentStatusLabel"><property name="text"><string>Ready</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QStackedWidget" name="pageStack">
+      <property name="currentIndex"><number>0</number></property>
+
+      <widget class="QWidget" name="overviewPage">
+       <layout class="QVBoxLayout" name="overviewLayout">
+        <property name="leftMargin"><number>28</number></property><property name="topMargin"><number>24</number></property><property name="rightMargin"><number>28</number></property><property name="bottomMargin"><number>24</number></property><property name="spacing"><number>16</number></property>
+        <item><widget class="QLabel" name="overviewHeading"><property name="font"><font><pointsize>20</pointsize><bold>true</bold></font></property><property name="text"><string>Overview</string></property></widget></item>
+        <item><widget class="QLabel" name="overviewSubtitle"><property name="text"><string>View the current status of your KERO environment.</string></property></widget></item>
+        <item>
+         <widget class="QGroupBox" name="repositoryGroup">
+          <property name="title"><string>This repository</string></property>
+          <layout class="QVBoxLayout" name="repositoryLayout">
+           <property name="spacing"><number>10</number></property>
+           <item><widget class="QLabel" name="repositoryNameLabel"><property name="font"><font><pointsize>14</pointsize><bold>true</bold></font></property><property name="text"><string>No repository detected</string></property></widget></item>
+           <item><widget class="QLabel" name="repositoryPathLabel"><property name="text"><string>Open KERO from a repository to use project-local knowledge.</string></property><property name="wordWrap"><bool>true</bool></property><property name="textInteractionFlags"><set>Qt::TextSelectableByMouse</set></property></widget></item>
+           <item>
+            <layout class="QHBoxLayout" name="statusCardsLayout">
+            <item><widget class="QGroupBox" name="knowledgeStatusGroup"><property name="title"><string>Knowledge</string></property><layout class="QVBoxLayout" name="knowledgeStatusLayout"><item><widget class="QLabel" name="knowledgeCountLabel"><property name="text"><string>0 items</string></property></widget></item><item><widget class="QLabel" name="knowledgeReadyLabel"><property name="text"><string>Ready</string></property></widget></item></layout></widget></item>
+            <item><widget class="QGroupBox" name="mountStatusGroup"><property name="title"><string>Mounts</string></property><layout class="QVBoxLayout" name="mountStatusLayout"><item><widget class="QLabel" name="mountCountLabel"><property name="text"><string>0 mounted</string></property></widget></item><item><widget class="QLabel" name="mountReadyLabel"><property name="text"><string>Ready</string></property></widget></item></layout></widget></item>
+             <item><widget class="QGroupBox" name="policyStatusGroup"><property name="title"><string>Policy</string></property><layout class="QVBoxLayout" name="policyStatusLayout"><item><widget class="QLabel" name="policyModeLabel"><property name="text"><string>Default</string></property></widget></item><item><widget class="QLabel" name="policyReadyLabel"><property name="text"><string>Available</string></property></widget></item></layout></widget></item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="overviewActionLayout">
+             <item><widget class="QPushButton" name="openEnvironmentButton"><property name="text"><string>Open .kero</string></property></widget></item>
+             <item><widget class="QPushButton" name="refreshOverviewButton"><property name="text"><string>Refresh</string></property></widget></item>
+             <item><spacer name="overviewActionSpacer"><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property></spacer></item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="overviewLowerLayout">
+          <item>
+           <widget class="QGroupBox" name="recentActivityGroup">
+            <property name="title"><string>Environment</string></property>
+            <layout class="QVBoxLayout" name="recentActivityLayout">
+             <item><widget class="QLabel" name="environmentHomeLabel"><property name="text"><string>KERO home</string></property><property name="wordWrap"><bool>true</bool></property><property name="textInteractionFlags"><set>Qt::TextSelectableByMouse</set></property></widget></item>
+             <item><widget class="QLabel" name="localDataPathLabel"><property name="text"><string>Local data</string></property><property name="wordWrap"><bool>true</bool></property><property name="textInteractionFlags"><set>Qt::TextSelectableByMouse</set></property></widget></item>
+             <item><widget class="QLabel" name="mountPathLabel"><property name="text"><string>Mounts</string></property><property name="wordWrap"><bool>true</bool></property><property name="textInteractionFlags"><set>Qt::TextSelectableByMouse</set></property></widget></item>
+             <item><spacer name="environmentSpacer"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property></spacer></item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item><spacer name="overviewSpacer"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property></spacer></item>
+       </layout>
+      </widget>
+
+      <widget class="QWidget" name="knowledgePage">
+       <layout class="QVBoxLayout" name="knowledgeLayout">
+        <property name="leftMargin"><number>28</number></property><property name="topMargin"><number>24</number></property><property name="rightMargin"><number>28</number></property><property name="bottomMargin"><number>24</number></property><property name="spacing"><number>14</number></property>
+        <item><widget class="QLabel" name="knowledgeHeading"><property name="font"><font><pointsize>20</pointsize><bold>true</bold></font></property><property name="text"><string>Knowledge</string></property></widget></item>
+        <item><widget class="QLabel" name="knowledgeSubtitle"><property name="text"><string>Browse knowledge available to this environment.</string></property></widget></item>
+        <item>
+         <widget class="QTabWidget" name="knowledgeTabs">
+          <property name="currentIndex"><number>0</number></property>
+          <widget class="QWidget" name="localKnowledgeTab">
+           <attribute name="title"><string>Local</string></attribute>
+           <layout class="QHBoxLayout" name="localKnowledgeLayout">
+            <item>
+             <widget class="QTreeWidget" name="localKnowledgeTree">
+              <property name="alternatingRowColors"><bool>true</bool></property>
+              <property name="sortingEnabled"><bool>true</bool></property>
+              <column><property name="text"><string>Name</string></property></column>
+              <column><property name="text"><string>Type</string></property></column>
+              <column><property name="text"><string>Modified</string></property></column>
+             </widget>
+            </item>
+            <item>
+             <widget class="QGroupBox" name="knowledgeDetailsGroup">
+              <property name="minimumSize"><size><width>250</width><height>0</height></size></property>
+              <property name="title"><string>Details</string></property>
+              <layout class="QVBoxLayout" name="knowledgeDetailsLayout">
+               <item><widget class="QLabel" name="knowledgeDetailsLabel"><property name="text"><string>Select an item to view details.</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
+               <item><spacer name="knowledgeDetailsSpacer"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property></spacer></item>
+              </layout>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QWidget" name="mountedKnowledgeTab"><attribute name="title"><string>Mounted</string></attribute><layout class="QVBoxLayout" name="mountedKnowledgeLayout"><item><widget class="QTreeWidget" name="mountedKnowledgeTree"><column><property name="text"><string>Name</string></property></column><column><property name="text"><string>Source</string></property></column><column><property name="text"><string>Status</string></property></column></widget></item></layout></widget>
+          <widget class="QWidget" name="indexTab"><attribute name="title"><string>Index</string></attribute><layout class="QVBoxLayout" name="indexLayout"><item><widget class="QLabel" name="indexStatusLabel"><property name="text"><string>Index integration will appear here when the index backend is wired.</string></property><property name="wordWrap"><bool>true</bool></property></widget></item><item><spacer name="indexSpacer"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property></spacer></item></layout></widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+
+      <widget class="QWidget" name="mountsPage">
+       <layout class="QVBoxLayout" name="mountsLayout">
+        <property name="leftMargin"><number>28</number></property><property name="topMargin"><number>24</number></property><property name="rightMargin"><number>28</number></property><property name="bottomMargin"><number>24</number></property><property name="spacing"><number>14</number></property>
+        <item><widget class="QLabel" name="mountsHeading"><property name="font"><font><pointsize>20</pointsize><bold>true</bold></font></property><property name="text"><string>Mounts</string></property></widget></item>
+        <item><widget class="QLabel" name="mountsSubtitle"><property name="text"><string>Mount knowledge from an existing KERO environment into this repository.</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
+        <item>
+         <widget class="QTreeWidget" name="mountsTree">
+          <property name="alternatingRowColors"><bool>true</bool></property>
+          <property name="rootIsDecorated"><bool>false</bool></property>
+          <property name="selectionMode"><enum>QAbstractItemView::SingleSelection</enum></property>
+          <column><property name="text"><string>Name</string></property></column>
+          <column><property name="text"><string>Source</string></property></column>
+          <column><property name="text"><string>Available at</string></property></column>
+          <column><property name="text"><string>Status</string></property></column>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="mountActionsLayout">
+          <item><widget class="QPushButton" name="addMountButton"><property name="text"><string>Mount Existing KERO Knowledge...</string></property></widget></item>
+          <item><widget class="QPushButton" name="editMountButton"><property name="text"><string>Edit...</string></property><property name="enabled"><bool>false</bool></property></widget></item>
+          <item><widget class="QPushButton" name="removeMountButton"><property name="text"><string>Remove</string></property><property name="enabled"><bool>false</bool></property></widget></item>
+          <item><spacer name="mountActionSpacer"><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property></spacer></item>
+          <item><widget class="QPushButton" name="moveMountUpButton"><property name="text"><string>Move Up</string></property><property name="enabled"><bool>false</bool></property></widget></item>
+          <item><widget class="QPushButton" name="moveMountDownButton"><property name="text"><string>Move Down</string></property><property name="enabled"><bool>false</bool></property></widget></item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+
+      <widget class="QWidget" name="policyPage">
+       <layout class="QVBoxLayout" name="policyLayout">
+        <property name="leftMargin"><number>28</number></property><property name="topMargin"><number>24</number></property><property name="rightMargin"><number>28</number></property><property name="bottomMargin"><number>24</number></property><property name="spacing"><number>14</number></property>
+        <item><widget class="QLabel" name="policyHeading"><property name="font"><font><pointsize>20</pointsize><bold>true</bold></font></property><property name="text"><string>Policy</string></property></widget></item>
+        <item><widget class="QLabel" name="policySubtitle"><property name="text"><string>Inspect the policy defaults used by this KERO environment.</string></property></widget></item>
+        <item>
+         <widget class="QGroupBox" name="verificationPolicyGroup">
+          <property name="title"><string>Verification</string></property>
+          <layout class="QFormLayout" name="verificationPolicyLayout">
+           <item row="0" column="0"><widget class="QLabel" name="verificationLabel"><property name="text"><string>Default mode</string></property></widget></item>
+           <item row="0" column="1"><widget class="QLabel" name="verificationValueLabel"><property name="text"><string>automatic</string></property></widget></item>
+           <item row="1" column="0"><widget class="QLabel" name="identityLabel"><property name="text"><string>Identity</string></property></widget></item>
+           <item row="1" column="1"><widget class="QLabel" name="identityValueLabel"><property name="text"><string>reuse</string></property></widget></item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="enrollmentPolicyGroup">
+          <property name="title"><string>Repository enrollment</string></property>
+          <layout class="QFormLayout" name="enrollmentPolicyLayout">
+           <item row="0" column="0"><widget class="QLabel" name="enrollmentLabel"><property name="text"><string>Default behavior</string></property></widget></item>
+           <item row="0" column="1"><widget class="QLabel" name="enrollmentValueLabel"><property name="text"><string>ask</string></property></widget></item>
+          </layout>
+         </widget>
+        </item>
+        <item><widget class="QLabel" name="policyHintLabel"><property name="text"><string>Policy execution and artifact inspection can be added here without changing the navigation structure.</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
+        <item><spacer name="policySpacer"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property></spacer></item>
+       </layout>
+      </widget>
+
+      <widget class="QWidget" name="settingsPage">
+       <layout class="QVBoxLayout" name="settingsLayout">
+        <property name="leftMargin"><number>28</number></property><property name="topMargin"><number>24</number></property><property name="rightMargin"><number>28</number></property><property name="bottomMargin"><number>24</number></property><property name="spacing"><number>14</number></property>
+        <item><widget class="QLabel" name="settingsHeading"><property name="font"><font><pointsize>20</pointsize><bold>true</bold></font></property><property name="text"><string>Settings</string></property></widget></item>
+        <item><widget class="QLabel" name="settingsSubtitle"><property name="text"><string>KERO host settings and environment locations.</string></property></widget></item>
+        <item>
+         <widget class="QGroupBox" name="homeSettingsGroup">
+          <property name="title"><string>KERO home</string></property>
+          <layout class="QVBoxLayout" name="homeSettingsLayout">
+           <item><widget class="QLabel" name="homeSettingsHint"><property name="text"><string>The user-selected global KERO environment.</string></property></widget></item>
+           <item>
+            <layout class="QHBoxLayout" name="homePathLayout">
+             <item><widget class="QLineEdit" name="homePathEdit"><property name="readOnly"><bool>true</bool></property></widget></item>
+             <item><widget class="QPushButton" name="openHomeButton"><property name="text"><string>Open</string></property></widget></item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="appearanceSettingsGroup">
+          <property name="title"><string>Appearance</string></property>
+          <layout class="QVBoxLayout" name="appearanceSettingsLayout">
+           <item><widget class="QLabel" name="appearanceHintLabel"><property name="text"><string>KERO follows the system and Qt platform theme. Accent, light/dark mode, controls, and focus colors are not hard-coded.</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="aboutSettingsGroup">
+          <property name="title"><string>About</string></property>
+          <layout class="QFormLayout" name="aboutSettingsLayout">
+           <item row="0" column="0"><widget class="QLabel" name="versionLabel"><property name="text"><string>Version</string></property></widget></item>
+           <item row="0" column="1"><widget class="QLabel" name="versionValueLabel"><property name="text"><string/></property></widget></item>
+          </layout>
+         </widget>
+        </item>
+        <item><spacer name="settingsSpacer"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property></spacer></item>
+       </layout>
+      </widget>
+
+     </widget>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <resources>
+  <include location="../resources/kero.qrc"/>
+ </resources>
+ <connections/>
+</ui>

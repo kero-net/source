@@ -1,0 +1,35 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Kero: Validate Locally",
+            "type": "process",
+            "command": "${workspaceFolder}/distribution/actions/kero-build.sh",
+            "args": [],
+            "windows": {
+                "command": "powershell.exe",
+                "args": [
+                    "-NoProfile",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-File",
+                    "${workspaceFolder}/distribution/actions/kero-build.ps1"
+                ]
+            },
+            "presentation": {
+                "panel": "new"
+            },
+            "group": "test",
+            "problemMatcher": []
+        },
+        {
+            "label": "Kero: Preview Terminal Styles",
+            "type": "process",
+            "command": "lune",
+            "args": ["run", "${workspaceFolder}/distribution/scripts/preview-terminal.luau"],
+            "presentation": { "panel": "new" },
+            "group": "test",
+            "problemMatcher": []
+        }
+    ]
+}

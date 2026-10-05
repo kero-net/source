@@ -1,0 +1,29 @@
+[distribution]
+id = "windows-x64"
+enabled = true
+lifecycle = "active"
+platform = "windows"
+architecture = "x86_64"
+artifact = "kero-installer.exe"
+final-artifact = "windows-x86_64.exe"
+native-host = "windows-x64"
+preset = "windows-x64"
+
+[rust]
+target = "x86_64-pc-windows-gnullvm"
+
+[qt]
+version = "6.8.3"
+host = "windows"
+architecture = "win64_llvm_mingw"
+directory = "llvm-mingw_64"
+
+[builder]
+kind = "windows-llvm"
+
+[dependencies]
+aqtinstall = "3.3.0"
+llvm-mingw = "20260922"
+
+[hosted]
+runner = "windows-latest"

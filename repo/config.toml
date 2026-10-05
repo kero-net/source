@@ -1,3 +1,0 @@
-schema = 1
-target = "kero-net/kero"
-channels = ["canary", "beta", "stable"]

@@ -1,0 +1,8 @@
+[verification]
+checksum = "sha256"
+gpg-key-environment = "KERO_GPG_KEY_ID"
+gpg-private-key-environment = "KERO_GPG_PRIVATE_KEY"
+
+[build]
+build-folder = ".heap"
+unsigned-local-builds = true
