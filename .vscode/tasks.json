@@ -7,19 +7,27 @@
             "command": "${workspaceFolder}/distribution/actions/kero-build.sh",
             "args": [],
             "windows": {
-                "command": "wsl.exe",
+                "command": "powershell.exe",
                 "args": [
-                    "--exec",
-                    "/bin/bash",
-                    "--noprofile",
-                    "--norc",
-                    "-lc",
-                    "exec \"$(wslpath '${workspaceFolder}')/distribution/actions/kero-build.sh\""
+                    "-NoProfile",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-File",
+                    "${workspaceFolder}/distribution/actions/kero-build.ps1"
                 ]
             },
             "presentation": {
                 "panel": "new"
             },
+            "group": "test",
+            "problemMatcher": []
+        },
+        {
+            "label": "Kero: Preview Terminal Styles",
+            "type": "process",
+            "command": "lune",
+            "args": ["run", "${workspaceFolder}/distribution/scripts/preview-terminal.luau"],
+            "presentation": { "panel": "new" },
             "group": "test",
             "problemMatcher": []
         }

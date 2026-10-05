@@ -11,9 +11,15 @@ local Toolchain = require("../verification/toolchain")
 --# Helpers
 
 local function run(root: string, line: string, scope: string)
-	Runtime.Log("==> " .. line)
+	Runtime.Log(":: " .. line)
 	local passed, message = Runtime.Run(root, line, true, scope)
 	assert(passed, message)
+end
+
+local function runStep(root: string, job: string, action: string, message: string, line: string, scope: string)
+	Runtime.Step(job, action, message)
+	run(root, line, scope)
+	Runtime.StepComplete(job)
 end
 
 local function requireEnvironment(name: string): string
@@ -55,8 +61,14 @@ function Package.Run(root: string, targetName: string)
 	local target = assert(Settings.Target(root, targetName), "unknown distribution target: " .. targetName)
 	assert(target.enabled, targetName .. " is " .. target.lifecycle)
 
+	local job = "build and publish " .. targetName
+	Runtime.Step(job, "Checking", targetName .. " toolchain")
 	Toolchain.Verify(root, targetName)
+	Runtime.StepComplete(job)
+
+	Runtime.Step(job, "Checking", "release signing configuration")
 	SigningKey.Verify(root)
+	Runtime.StepComplete(job)
 
 	local cargo = Runtime.Environment("KERO_CARGO") or "cargo"
 	local rustup = Runtime.Environment("KERO_RUSTUP") or "rustup"
@@ -64,7 +76,7 @@ function Package.Run(root: string, targetName: string)
 	local rustToolchain = Runtime.Environment("KERO_RUST_TOOLCHAIN")
 	local toolchainOption = if rustToolchain and rustToolchain ~= "" then " --toolchain " .. rustToolchain else ""
 	local cargoTarget = ".heap/build/cargo/" .. targetName
-	local wasm = cargoTarget .. "/wasm32-wasip1/release/kero_core.wasm"
+	local wasm = ".heap/build/cargo/wasm/wasm32-wasip1/release/kero_core.wasm"
 	local hostExtension = if target.platform == "windows" then ".exe" else ""
 	local host = cargoTarget .. "/" .. target.rustTarget .. "/release/kero-host" .. hostExtension
 	local build = ".heap/build/qt/" .. targetName
@@ -72,34 +84,46 @@ function Package.Run(root: string, targetName: string)
 	local scope = targetName .. "-build"
 
 	local cargoEnvironment = "CARGO_TARGET_DIR=" .. Runtime.Quote(cargoTarget) .. " "
-	run(root, rustup .. " target add" .. toolchainOption .. " wasm32-wasip1 " .. Runtime.Quote(target.rustTarget), scope)
-	run(root, cargoEnvironment .. cargo .. " build --manifest-path src/Cargo.toml --release -p kero-core --target wasm32-wasip1", scope)
-	run(root, cargoEnvironment .. cargo .. " build --manifest-path src/Cargo.toml --release -p kero-cli --target " .. Runtime.Quote(target.rustTarget), scope)
+	runStep(root, job, "Installing", "Rust target", rustup .. " target add" .. toolchainOption .. " " .. Runtime.Quote(target.rustTarget), scope)
+	runStep(root, job, "Compiling", "kero-cli for " .. targetName, cargoEnvironment .. cargo .. " build --manifest-path src/Cargo.toml --release -p kero-cli --target " .. Runtime.Quote(target.rustTarget), scope)
 
 	local deployTool = requireEnvironment("KERO_DEPLOY_TOOL")
 	if target.platform == "windows" then
-		run(root, cmake .. " -E rm -rf " .. Runtime.Quote(build), scope)
+		local function windowsPath(path: string): string
+			local output, message = Runtime.Capture(root, "wslpath -m " .. Runtime.Quote(path))
+			return assert(output, "cannot translate Windows package path: " .. tostring(message))
+		end
+		Runtime.Step(job, "Configuring", "Qt package for " .. targetName)
 		run(root, cmake .. " -E make_directory " .. Runtime.Quote(build), scope)
 
 		local icon = writeWindowsIcon(root, targetName)
-		local environment = "KERO_ICON=" .. Runtime.Quote(icon)
-			.. " KERO_WASM=" .. Runtime.Quote(wasm)
-			.. " KERO_HOST=" .. Runtime.Quote(host)
-			.. " KERO_DEPLOY_TOOL=" .. Runtime.Quote(deployTool)
+		local environment = "KERO_ICON=" .. Runtime.Quote(windowsPath(icon))
+			.. " KERO_WASM=" .. Runtime.Quote(windowsPath(root .. "/" .. wasm))
+			.. " KERO_HOST=" .. Runtime.Quote(windowsPath(root .. "/" .. host))
+			.. " KERO_DEPLOY_TOOL=" .. Runtime.Quote(windowsPath(deployTool))
 		run(root, environment .. " " .. cmake .. " --preset " .. target.preset .. " -S host/qt -B " .. Runtime.Quote(build), scope)
-		run(root, cmake .. " --build " .. Runtime.Quote(build) .. " --target kero-package", scope)
-		run(root, cmake .. " --build " .. Runtime.Quote(build) .. " --target kero-windows-installer", scope)
+		Runtime.StepComplete(job)
+		run(root, cmake .. " -E rm -rf " .. Runtime.Quote(build .. "/stage") .. " " .. Runtime.Quote(build .. "/bootstrap"), scope)
+
+		runStep(root, job, "Packaging", targetName, cmake .. " --build " .. Runtime.Quote(build) .. " --target kero-package", scope)
+		runStep(root, job, "Packaging", "Windows installer", cmake .. " --build " .. Runtime.Quote(build) .. " --target kero-windows-installer", scope)
+
+		Runtime.Step(job, "Checking", "artifact checksum and signature")
 		signArtifact(root, release .. "/kero-installer.exe", scope)
+		Runtime.StepComplete(job)
 		return
 	end
 
 	local environment = "KERO_WASM=" .. Runtime.Quote(wasm)
 		.. " KERO_HOST=" .. Runtime.Quote(host)
 		.. " KERO_DEPLOY_TOOL=" .. Runtime.Quote(deployTool)
-	run(root, environment .. " " .. cmake .. " --preset " .. target.preset .. " -S host/qt -B " .. Runtime.Quote(build), scope)
-	run(root, cmake .. " --build " .. Runtime.Quote(build) .. " --target kero-package", scope)
-	run(root, cmake .. " --build " .. Runtime.Quote(build) .. " --target kero-linux-appimage", scope)
+	runStep(root, job, "Configuring", "Qt package for " .. targetName, environment .. " " .. cmake .. " --preset " .. target.preset .. " -S host/qt -B " .. Runtime.Quote(build), scope)
+	runStep(root, job, "Packaging", targetName, cmake .. " --build " .. Runtime.Quote(build) .. " --target kero-package", scope)
+	runStep(root, job, "Packaging", "Linux AppImage", cmake .. " --build " .. Runtime.Quote(build) .. " --target kero-linux-appimage", scope)
+
+	Runtime.Step(job, "Checking", "artifact checksum and signature")
 	signArtifact(root, release .. "/kero.AppImage", scope)
+	Runtime.StepComplete(job)
 end
 
 return Package

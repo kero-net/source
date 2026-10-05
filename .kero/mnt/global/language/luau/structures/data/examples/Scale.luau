@@ -1,7 +1,7 @@
 -- structures/data: Scale.luau
 --!strict
 
-const base = 8
+local base = 8
 
 return {
 	base = base,

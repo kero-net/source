@@ -101,6 +101,7 @@ void setStatus(QLabel* label, const QString& text, StatusTone tone) {
 KeroAppWindow::KeroAppWindow(QWidget* parent)
     : QMainWindow(parent), ui_(std::make_unique<Ui::KeroMainWindow>()) {
     ui_->setupUi(this);
+    ui_->versionValueLabel->setText(QStringLiteral(KERO_VERSION));
     setWindowIcon(QIcon(":/images/kero-icon.png"));
 
     auto* contextPanel = new QWidget(this);

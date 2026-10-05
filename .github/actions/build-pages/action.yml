@@ -8,4 +8,4 @@ runs:
   using: composite
   steps:
     - shell: bash
-      run: lua5.4 pages/build.lua "${{ inputs.destination }}"
+      run: lune run pages/build.luau "${{ inputs.destination }}"

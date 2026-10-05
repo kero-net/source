@@ -3,6 +3,7 @@
 
 --# Modules
 
+local Runtime = require("../Runtime")
 local ReadManifests = require("../configuration/read-manifests")
 
 --# Functions
@@ -13,11 +14,14 @@ function Contracts.Verify(root: string)
 	local registry = ReadManifests.Read(root)
 	local tools = ReadManifests.Tools(root)
 
+	Runtime.Status("Checking", "distribution verification policy")
 	assert(registry.policy.verification.checksum == "sha256", "distribution/policy.toml requires sha256 verification")
+	Runtime.Status("Checking", "required tool manifests")
 	assert(tools.aqtinstall and tools.linuxdeploy and tools["appimage-runtime"], "required tool manifests are missing")
 
 	local enabled = 0
 	for identifier, target in pairs(registry.targets) do
+		Runtime.Status("Checking", "build manifest " .. identifier)
 		assert(target.distribution.platform ~= "", "build manifest platform is missing: " .. identifier)
 		assert(target.distribution.architecture ~= "", "build manifest architecture is missing: " .. identifier)
 		assert(target.rust.target ~= "", "build manifest Rust target is missing: " .. identifier)
@@ -34,6 +38,7 @@ function Contracts.Verify(root: string)
 		end
 	end
 
+	Runtime.Status("Checking", "enabled distribution set")
 	assert(enabled == 4, "exactly four distributions are enabled")
 	assert(registry.targets["macos-arm64"] == nil, "macOS is not currently a distribution definition")
 end

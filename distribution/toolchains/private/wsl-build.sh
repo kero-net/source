@@ -8,8 +8,11 @@ qt_version=${3:?}
 qt_directory=${4:?}
 deploy_arch=${5:?}
 rust_target=${6:?}
-tools="$workspace/.heap/build/toolchains"
-dependencies="$workspace/.heap/artifacts/dependencies"
+work_root=${KERO_WSL_WORK_ROOT:?Linux builds require an ext4 work root}
+source_root="$work_root/build/source"
+test -f "$source_root/src/Cargo.toml"
+tools="$work_root/cache/toolchains"
+dependencies="$workspace/.heap/cache/downloads"
 qt="$tools/qt/$target/$qt_version/$qt_directory"
 
 extract_qt() {
@@ -30,32 +33,32 @@ extract_qt() {
 }
 
 extract_qt "$target" "$qt"
-chmod +x "$tools/linuxdeploy/linuxdeploy-$deploy_arch.AppImage"
+chmod +x "$dependencies/linuxdeploy/linuxdeploy-$deploy_arch.AppImage"
 export KERO_QT_PREFIX="$qt"
 export KERO_LINUXDEPLOY="$dependencies/linuxdeploy/linuxdeploy-$deploy_arch.AppImage"
 export KERO_LINUX_ARCH="$deploy_arch"
 export KERO_APPIMAGE_RUNTIME="$dependencies/appimage/runtime-$deploy_arch"
-export CARGO_TARGET_DIR="$workspace/.heap/build/cargo/$target"
+export CARGO_TARGET_DIR="$work_root/build/cargo/$target"
 export LD_LIBRARY_PATH="$qt/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-mkdir -p "$workspace/.heap/build/assets"
-convert "$workspace/assets/images/kero-icon.png" -resize 512x512! "$workspace/.heap/build/assets/kero.png"
-export KERO_LINUX_ICON="$workspace/.heap/build/assets/kero.png"
+mkdir -p "$work_root/build/assets"
+convert "$source_root/assets/images/kero-icon.png" -resize 512x512! "$work_root/build/assets/kero.png"
+export KERO_LINUX_ICON="$work_root/build/assets/kero.png"
 
 if [[ "$target" == linux-x64 ]]; then
   arm_qt="$tools/qt/linux-arm64/$qt_version/gcc_arm64"
   extract_qt linux-arm64 "$arm_qt"
   export KERO_ZIG="$tools/zig/zig-aarch64-linux-0.15.2/zig"
-  export KERO_C_COMPILER="$workspace/distribution/toolchains/private/zig-cc.sh"
-  export KERO_CXX_COMPILER="$workspace/distribution/toolchains/private/zig-cxx.sh"
+  export KERO_C_COMPILER="$source_root/distribution/toolchains/private/zig-cc.sh"
+  export KERO_CXX_COMPILER="$source_root/distribution/toolchains/private/zig-cxx.sh"
   export KERO_QT_HOST_PATH="$arm_qt"
   export KERO_LINUX_SYSROOT="$tools/linux-x64/rootfs"
   export KERO_NATIVE_LINUXDEPLOY="$dependencies/linuxdeploy/linuxdeploy-aarch64.AppImage"
-  export KERO_LINUXDEPLOY="$workspace/distribution/toolchains/private/cross-appimage.sh"
+  export KERO_LINUXDEPLOY="$source_root/distribution/toolchains/private/cross-appimage.sh"
   export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER="$KERO_C_COMPILER"
   chmod +x "$KERO_C_COMPILER" "$KERO_CXX_COMPILER" "$KERO_NATIVE_LINUXDEPLOY" "$KERO_LINUXDEPLOY"
 fi
 
-cd "$workspace"
+cd "$source_root"
 cargo_command=${KERO_CARGO:-cargo}
 rust_toolchain=${KERO_RUST_TOOLCHAIN:-}
 toolchain_option=
@@ -63,18 +66,19 @@ if [[ -n "$rust_toolchain" ]]; then
   toolchain_option=" --toolchain $rust_toolchain"
 fi
 
-rustup target add$toolchain_option wasm32-wasip1 "$rust_target"
-"$cargo_command" build --manifest-path src/Cargo.toml --release -p kero-core --target wasm32-wasip1
+rustup target add$toolchain_option "$rust_target"
 "$cargo_command" build --manifest-path src/Cargo.toml --release -p kero-cli --target "$rust_target"
 
-build="$workspace/.heap/build/qt/$target"
-release="$workspace/.heap/build/releases/$target"
-wasm="$CARGO_TARGET_DIR/wasm32-wasip1/release/kero_core.wasm"
+build="$work_root/build/qt/$target"
+release="$work_root/build/releases/$target"
+wasm="$work_root/build/cargo/wasm/wasm32-wasip1/release/kero_core.wasm"
 host="$CARGO_TARGET_DIR/$rust_target/release/kero-host"
-KERO_WASM="$wasm" KERO_HOST="$host" KERO_DEPLOY_TOOL="$KERO_LINUXDEPLOY" cmake --preset "$target" -S host/qt -B "$build"
+KERO_WASM="$wasm" KERO_HOST="$host" KERO_DEPLOY_TOOL="$KERO_LINUXDEPLOY" cmake --preset "$target" -S host/qt -B "$build" -D "KERO_RELEASE_DIRECTORY=$release"
 cmake --build "$build" --target kero-package
 cmake --build "$build" --target kero-linux-appimage
 cmake -E sha256sum "$release/kero.AppImage" > "$release/kero.AppImage.sha256"
+mkdir -p "$workspace/.heap/build/releases/$target"
+cp -f "$release/kero.AppImage" "$release/kero.AppImage.sha256" "$workspace/.heap/build/releases/$target/"
 
 if [[ ${KERO_SIGN_RELEASE:-0} == 1 ]]; then
   : "${KERO_GPG_KEY_ID:?KERO_GPG_KEY_ID is required when signing}"

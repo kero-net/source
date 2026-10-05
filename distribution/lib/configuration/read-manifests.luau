@@ -55,7 +55,6 @@ export type BuilderManifest = {
 
 export type HostedManifest = {
 	runner: string,
-	lua: string,
 }
 
 export type TargetManifest = {
@@ -184,7 +183,6 @@ local function readTarget(path: string): TargetManifest
 		local hostedTable = hostedValue :: Toml.Table
 		hosted = {
 			runner = stringField(hostedTable, "runner", path .. ".hosted"),
-			lua = stringField(hostedTable, "lua", path .. ".hosted"),
 		}
 	end
 

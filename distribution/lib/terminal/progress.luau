@@ -1,21 +1,32 @@
 -- distribution/lib/terminal/progress.luau
 --!strict
 
--- The bounded fill calculation follows the presentation model used by
--- pacman's fill_progress function, without carrying over its terminal I/O,
--- animation, colors, callbacks, or package-manager state.
--- Source: https://gist.github.com/TaylanTatli/e813c2560b0f1ecc9f5d
+--# Functions
 
 local Progress = {}
 
-function Progress.Format(completed: number, total: number, width: number?): string
+function Progress.Segments(completed: number, total: number, width: number): (string, string)
 	assert(total > 0, "progress requires at least one action")
 	assert(completed >= 0 and completed <= total, "progress completion is out of range")
-	local barWidth = width or 28
-	local percent = math.floor((completed * 100) / total)
-	local filled = math.floor((percent * barWidth) / 100)
-	local bar = string.rep("█", filled) .. string.rep(" ", barWidth - filled)
-	return string.format("   Building [%s] %3d%% (%d/%d)", bar, percent, completed, total)
+	assert(width > 0, "progress width must be positive")
+
+	if completed == total then
+		return string.rep("=", width), ""
+	end
+
+	local filled = math.floor((completed * width) / total)
+	if filled >= width then
+		filled = width - 1
+	end
+
+	local active = string.rep("=", filled) .. ">"
+	return active, string.rep(" ", width - #active)
+end
+
+function Progress.Count(completed: number, total: number): string
+	assert(total > 0, "progress requires at least one action")
+	assert(completed >= 0 and completed <= total, "progress completion is out of range")
+	return string.format("%d/%d", completed, total)
 end
 
 return Progress

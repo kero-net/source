@@ -9,6 +9,7 @@ local Settings = require("../configuration/settings")
 --# Helpers
 
 local function requireCommand(root: string, executable: string, arguments: string, scope: string)
+	Runtime.Status("Checking", executable)
 	local available = Runtime.Run(root, executable .. " " .. arguments, true, scope)
 	assert(available, "required executable is unavailable: " .. executable)
 end
@@ -33,10 +34,12 @@ function Toolchain.Verify(root: string, target: string)
 	requireCommand(root, cmake, "--version", scope)
 	requireCommand(root, cargo, "--version", scope)
 
+	Runtime.Status("Checking", "Rust target wasm32-wasip1")
 	local installed, details = Runtime.Capture(root, rustup .. " target list --installed")
 	assert(installed and installed:find("wasm32%-wasip1"), target .. " requires Rust target wasm32-wasip1\n" .. tostring(details or ""))
 
 	if target == "windows-arm64" then
+		Runtime.Status("Checking", "Windows ARM64 compiler")
 		local compiler = Runtime.Environment("KERO_MSVC_LINKER_POSIX")
 		assert(compiler and Runtime.IsFile(compiler), "windows-arm64 requires the MSVC ARM64 compiler")
 	end

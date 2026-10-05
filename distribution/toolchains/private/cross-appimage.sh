@@ -31,7 +31,7 @@ export QT_PLUGIN_PATH="$HERE/usr/plugins"
 exec "$HERE/usr/bin/kero-install" "$@"
 EOF
 chmod +x "$appdir/AppRun"
-extract_dir="${KERO_NATIVE_LINUXDEPLOY%/*}/native-extracted/squashfs-root"
+extract_dir="${KERO_WSL_WORK_ROOT:?}/cache/toolchains/linuxdeploy/native-extracted/squashfs-root"
 if [[ ! -x "$extract_dir/plugins/linuxdeploy-plugin-appimage/usr/bin/appimagetool" ]]; then
   extract_parent=${extract_dir%/*}
   rm -rf "$extract_parent"

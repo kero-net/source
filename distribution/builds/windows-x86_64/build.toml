@@ -27,4 +27,3 @@ llvm-mingw = "20260922"
 
 [hosted]
 runner = "windows-latest"
-lua = "lua"

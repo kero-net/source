@@ -27,7 +27,7 @@ the formats required by those tools.
 The TOML manifest tree under `distribution/builds/` replaces `distribution/distribution.kst` and
 `distribution/toolchains.kst`. It owns each target's artifact, native host,
 local requirements, hosted runner, Qt kit/version, compiler architecture, and
-signing-variable names. One shared Lua reader serves package, orchestration,
+signing-variable names. One shared Luau reader serves package, orchestration,
 key validation, toolchain validation, the generated GitHub Actions matrix, and
 contract tests; there is no fallback registry or duplicate workflow matrix.
 
