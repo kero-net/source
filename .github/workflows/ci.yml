@@ -255,24 +255,28 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          echo "KERO_QT_PREFIX=$QT_ROOT_DIR" >> "$GITHUB_ENV"
-          echo "KERO_CXX_COMPILER=cl.exe" >> "$GITHUB_ENV"
-          if [[ '${{ matrix.target }}' == 'windows-arm64' ]]; then
-            linker="$(where.exe link.exe | head -n 1 | tr -d '\r')"
-            archiver="$(where.exe lib.exe | head -n 1 | tr -d '\r')"
-            echo "KERO_MSVC_LINKER=$linker" >> "$GITHUB_ENV"
-            echo "KERO_MSVC_LINKER_POSIX=$linker" >> "$GITHUB_ENV"
-            echo "KERO_MSVC_ARCHIVER=$archiver" >> "$GITHUB_ENV"
-          fi
+          {
+            echo "KERO_QT_PREFIX=$QT_ROOT_DIR"
+            echo "KERO_CXX_COMPILER=cl.exe"
+            if [[ '${{ matrix.target }}' == 'windows-arm64' ]]; then
+              linker="$(where.exe link.exe | head -n 1 | tr -d '\r')"
+              archiver="$(where.exe lib.exe | head -n 1 | tr -d '\r')"
+              echo "KERO_MSVC_LINKER=$linker"
+              echo "KERO_MSVC_LINKER_POSIX=$linker"
+              echo "KERO_MSVC_ARCHIVER=$archiver"
+            fi
+          } >> "$GITHUB_ENV"
       - name: Install Linux AppImage tooling
         if: runner.os == 'Linux'
         shell: bash
         run: |
           curl --fail --location --retry 3 https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage --output "$RUNNER_TEMP/linuxdeploy"
           chmod 700 "$RUNNER_TEMP/linuxdeploy"
-          echo "KERO_QT_PREFIX=$QT_ROOT_DIR" >> "$GITHUB_ENV"
-          echo "KERO_LINUXDEPLOY=$RUNNER_TEMP/linuxdeploy" >> "$GITHUB_ENV"
-          echo "APPIMAGE_EXTRACT_AND_RUN=1" >> "$GITHUB_ENV"
+          {
+            echo "KERO_QT_PREFIX=$QT_ROOT_DIR"
+            echo "KERO_LINUXDEPLOY=$RUNNER_TEMP/linuxdeploy"
+            echo "APPIMAGE_EXTRACT_AND_RUN=1"
+          } >> "$GITHUB_ENV"
       - name: Build unsigned package
         env:
           KERO_BUILD_TARGET: ${{ matrix.target }}
