@@ -7,7 +7,7 @@ local filesystem = require("../actions/lib/filesystem")
 
 local version = "1.7.12"
 local is_windows = require("@lune/process").os == "windows"
-local machine = is_windows and "windows" or assert(io.popen("uname -m", "r")):read("*l")
+local machine = is_windows and "windows" or assert(io.popen("uname -m", "r")):read("*l"):match("^[^\r\n]+")
 local assets = {
   x86_64 = {
     archive = "actionlint_" .. version .. "_linux_amd64.tar.gz",
