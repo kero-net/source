@@ -219,3 +219,15 @@ each workflow job and during local bootstrap.
 Distribution build manifests name the hosted runner and packaging inputs.
 They do not select a Lua interpreter; the hosted matrix and portable checks
 use the same pinned Lune runtime as local validation.
+
+Hosted publication derives compiler-family and packaging inputs from those
+manifests instead of inferring them from the runner operating system. The
+publication workflow builds the shared WASM core once, then supplies it to each
+package job. Hosted runners may use a native execution strategy even when local
+validation uses a cross-build strategy for the same target: Windows x64 uses
+the pinned x86_64 LLVM-MinGW archive on the x64 runner, Linux x64 uses native
+GCC on the x64 runner, Windows ARM64 binds Cargo and CMake to the ARM64 MSVC
+toolchain explicitly, and Linux package jobs use the manifest-selected
+linuxdeploy architecture and AppImage runtime. Target semantics remain owned by
+the distribution manifests; host-specific execution details must not redefine
+the target.
