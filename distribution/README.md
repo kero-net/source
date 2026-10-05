@@ -93,9 +93,11 @@ native hosts and sign only from their protected local key environment.
 
 Contributor commands never require credentials, tokens, or signing keys. A
 package is unsigned by default even if a key fingerprint exists in the shell.
-Only GitHub's protected `release` environment sets `KERO_SIGN_RELEASE=1` and
-receives the release signing key. It publishes the signed packages; local and
-pull-request outputs remain deliberately unsigned.
+When GitHub's protected `release` environment provides a private key and
+passphrase, publication sets `KERO_SIGN_RELEASE=1` and signs packages, commits,
+and tags. Without those secrets, publication uses unsigned packages, commits,
+and annotated tags. A partial private-key configuration fails before packaging.
+Local and pull-request outputs remain unsigned.
 
 Windows ARM64 cross-builds the configured LLVM-MinGW Windows x64 target.
 Downloaded inputs remain disposable under `.heap/`.

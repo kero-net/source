@@ -1,5 +1,5 @@
 name: Publish KERO release
-description: Replace a generated branch, create its signed tag, and create the public GitHub Release.
+description: Replace a generated branch, create its tag, and create the public GitHub Release.
 inputs:
   channel:
     required: true
