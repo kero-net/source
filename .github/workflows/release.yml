@@ -125,9 +125,35 @@ jobs:
           matrix="$(lune run .github/scripts/distribution-matrix.luau | tail -n 1)"
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
+  build-wasm:
+    name: Build shared WASM core
+    needs: resolve-publication
+    if: needs.resolve-publication.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out validated source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source-sha }}
+          persist-credentials: false
+      - name: Install WASM core target
+        run: rustup target add wasm32-wasip1
+      - name: Build shared WASM core
+        shell: bash
+        run: |
+          mkdir -p .heap/build/cargo/wasm
+          CARGO_TARGET_DIR="$PWD/.heap/build/cargo/wasm" \
+            cargo build --manifest-path src/Cargo.toml --release -p kero-core --target wasm32-wasip1
+      - name: Upload shared WASM core
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: package-wasm-core
+          path: .heap/build/cargo/wasm/wasm32-wasip1/release/kero_core.wasm
+          if-no-files-found: error
+
   build-release-packages:
     name: Build package (${{ matrix.target }})
-    needs: [resolve-publication, validate-release-key, package-plan]
+    needs: [resolve-publication, validate-release-key, package-plan, build-wasm]
     if: needs.resolve-publication.outputs.enabled == 'true'
     environment: release
     strategy:
@@ -140,6 +166,11 @@ jobs:
         with:
           ref: ${{ inputs.source-sha }}
           persist-credentials: false
+      - name: Download shared WASM core
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: package-wasm-core
+          path: .heap/build/cargo/wasm/wasm32-wasip1/release
       - name: Set up GPG
         if: runner.os == 'Linux' && needs.validate-release-key.outputs.signing == 'true'
         run: sudo apt-get update && sudo apt-get install --yes gnupg
@@ -152,7 +183,7 @@ jobs:
       - name: Set up Lune
         uses: ./.github/actions/setup-lune
       - name: Set up MSVC
-        if: runner.os == 'Windows'
+        if: matrix.builder_kind == 'windows-msvc'
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
         with:
           arch: ${{ matrix.msvc_arch }}
@@ -171,33 +202,89 @@ jobs:
           arch: ${{ matrix.qt_arch }}
           cache: true
           setup-python: ${{ matrix.target != 'windows-arm64' }}
-      - name: Configure package environment
-        if: runner.os == 'Windows'
+      - name: Configure MSVC package environment
+        if: matrix.builder_kind == 'windows-msvc'
         shell: bash
         run: |
+          compiler="$(where.exe cl.exe | head -n 1 | tr -d '\r')"
+          linker="$(where.exe link.exe | head -n 1 | tr -d '\r')"
+          archiver="$(where.exe lib.exe | head -n 1 | tr -d '\r')"
+          rc="$(where.exe rc.exe | head -n 1 | tr -d '\r')"
+          mt="$(where.exe mt.exe | head -n 1 | tr -d '\r')"
+          compiler="$(cygpath -m "$compiler")"
+          linker="$(cygpath -m "$linker")"
+          archiver="$(cygpath -m "$archiver")"
+          rc="$(cygpath -m "$rc")"
+          mt="$(cygpath -m "$mt")"
           {
-            echo "KERO_QT_PREFIX=$QT_ROOT_DIR"
-            echo "KERO_CXX_COMPILER=cl.exe"
-            if [[ '${{ matrix.target }}' == 'windows-arm64' ]]; then
-              linker="$(where.exe link.exe | head -n 1 | tr -d '\r')"
-              archiver="$(where.exe lib.exe | head -n 1 | tr -d '\r')"
-              echo "KERO_MSVC_LINKER=$linker"
-              echo "KERO_MSVC_LINKER_POSIX=$linker"
-              echo "KERO_MSVC_ARCHIVER=$archiver"
-            fi
+            echo "KERO_QT_PREFIX=$(cygpath -m "$QT_ROOT_DIR")"
+            echo "KERO_CXX_COMPILER=$compiler"
+            echo "KERO_MSVC_LINKER=$linker"
+            echo "KERO_MSVC_LINKER_POSIX=$linker"
+            echo "KERO_MSVC_ARCHIVER=$archiver"
+            echo "KERO_MSVC_RC=$rc"
+            echo "KERO_MSVC_MT=$mt"
+            echo "CARGO_TARGET_AARCH64_PC_WINDOWS_MSVC_LINKER=$linker"
           } >> "$GITHUB_ENV"
-      - name: Install Linux AppImage tooling
-        if: runner.os == 'Linux'
+      - name: Install hosted LLVM-MinGW toolchain
+        if: matrix.builder_kind == 'windows-llvm'
         shell: bash
         run: |
-          curl --fail --location --retry 3 https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage --output "$RUNNER_TEMP/linuxdeploy"
-          chmod 700 "$RUNNER_TEMP/linuxdeploy"
+          archive="$RUNNER_TEMP/${{ matrix.llvm_mingw_archive }}"
+          root="$RUNNER_TEMP/llvm-mingw-${{ matrix.llvm_mingw_version }}-ucrt-x86_64"
+          curl --fail --location --retry 3 \
+            "${{ matrix.llvm_mingw_base_url }}/${{ matrix.llvm_mingw_archive }}" \
+            --output "$archive"
+          echo "${{ matrix.llvm_mingw_sha256 }}  $archive" | sha256sum --check
+          rm -rf "$root"
+          unzip -q "$archive" -d "$RUNNER_TEMP"
+          bin="$root/bin"
+          qt="$(cygpath -m "$QT_ROOT_DIR")"
+          {
+            echo "KERO_QT_PREFIX=$qt"
+            echo "KERO_CXX_COMPILER=$(cygpath -m "$bin/x86_64-w64-mingw32-clang++.exe")"
+            echo "KERO_WINDRES=$(cygpath -m "$bin/x86_64-w64-mingw32-windres.exe")"
+            echo "KERO_RUNTIME_DIR=$(cygpath -m "$root/x86_64-w64-mingw32/bin")"
+            echo "KERO_DEPLOY_TOOL=$qt/bin/windeployqt.exe"
+            echo "CARGO_TARGET_X86_64_PC_WINDOWS_GNULLVM_LINKER=$(cygpath -m "$bin/x86_64-w64-mingw32-clang.exe")"
+          } >> "$GITHUB_ENV"
+          cygpath -w "$bin" >> "$GITHUB_PATH"
+      - name: Install Linux AppImage tooling
+        if: matrix.builder_kind == 'wsl-linux'
+        shell: bash
+        run: |
+          deploy="$RUNNER_TEMP/linuxdeploy"
+          runtime="$RUNNER_TEMP/appimage-runtime"
+          icon="$RUNNER_TEMP/kero.png"
+          curl --fail --location --retry 3 \
+            "${{ matrix.linuxdeploy_base_url }}/linuxdeploy-${{ matrix.linuxdeploy_arch }}.AppImage" \
+            --output "$deploy"
+          echo "${{ matrix.linuxdeploy_sha256 }}  $deploy" | sha256sum --check
+          curl --fail --location --retry 3 \
+            "${{ matrix.appimage_runtime_base_url }}/runtime-${{ matrix.linuxdeploy_arch }}" \
+            --output "$runtime"
+          echo "${{ matrix.appimage_runtime_sha256 }}  $runtime" | sha256sum --check
+          chmod 700 "$deploy" "$runtime"
+          if ! command -v convert >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install --yes imagemagick
+          fi
+          convert assets/images/kero-icon.png -resize 512x512! "$icon"
           {
             echo "KERO_QT_PREFIX=$QT_ROOT_DIR"
-            echo "KERO_LINUXDEPLOY=$RUNNER_TEMP/linuxdeploy"
-            echo "KERO_DEPLOY_TOOL=$RUNNER_TEMP/linuxdeploy"
+            echo "KERO_LINUXDEPLOY=$deploy"
+            echo "KERO_DEPLOY_TOOL=$deploy"
+            echo "KERO_APPIMAGE_RUNTIME=$runtime"
+            echo "KERO_LINUX_ARCH=${{ matrix.linuxdeploy_arch }}"
+            echo "KERO_LINUX_ICON=$icon"
             echo "APPIMAGE_EXTRACT_AND_RUN=1"
           } >> "$GITHUB_ENV"
+          if [[ '${{ matrix.target }}' == 'linux-x64' ]]; then
+            {
+              echo "KERO_C_COMPILER=gcc"
+              echo "KERO_CXX_COMPILER=g++"
+            } >> "$GITHUB_ENV"
+          fi
       - name: Configure protected release signing
         if: needs.validate-release-key.outputs.signing == 'true'
         shell: bash
