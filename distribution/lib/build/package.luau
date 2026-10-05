@@ -89,11 +89,15 @@ function Package.Run(root: string, targetName: string)
 	runStep(root, job, "Installing", "Rust target", rustup .. " target add" .. toolchainOption .. " " .. Runtime.Quote(target.rustTarget), scope)
 	runStep(root, job, "Compiling", "kero-cli for " .. targetName, cargoEnvironment .. cargo .. " build --manifest-path src/Cargo.toml --release -p kero-cli --target " .. Runtime.Quote(target.rustTarget), scope)
 
-	local deployTool = requireEnvironment("KERO_DEPLOY_TOOL")
+	local deployTool = Runtime.Environment("KERO_DEPLOY_TOOL") or ""
 	if target.platform == "windows" then
 		local function windowsPath(path: string): string
+			if Runtime.IsWindows() then
+				local output, message = Runtime.Capture(root, "cygpath -m " .. Runtime.Quote(path))
+				return assert(output, "cannot translate native Windows package path: " .. tostring(message))
+			end
 			local output, message = Runtime.Capture(root, "wslpath -m " .. Runtime.Quote(path))
-			return assert(output, "cannot translate Windows package path: " .. tostring(message))
+			return assert(output, "cannot translate WSL package path: " .. tostring(message))
 		end
 		Runtime.Step(job, "Configuring", "Qt package for " .. targetName)
 		run(root, cmake .. " -E make_directory " .. Runtime.Quote(build), scope)
@@ -102,7 +106,11 @@ function Package.Run(root: string, targetName: string)
 		local environment = "KERO_ICON=" .. Runtime.Quote(windowsPath(icon))
 			.. " KERO_WASM=" .. Runtime.Quote(windowsPath(root .. "/" .. wasm))
 			.. " KERO_HOST=" .. Runtime.Quote(windowsPath(root .. "/" .. host))
-			.. " KERO_DEPLOY_TOOL=" .. Runtime.Quote(windowsPath(deployTool))
+		if deployTool ~= "" then
+			environment ..= " KERO_DEPLOY_TOOL=" .. Runtime.Quote(windowsPath(deployTool))
+		elseif targetName ~= "windows-arm64" then
+			error("package build requires KERO_DEPLOY_TOOL")
+		end
 		run(root, environment .. " " .. cmake .. " --preset " .. target.preset .. " -S host/qt -B " .. Runtime.Quote(build), scope)
 		Runtime.StepComplete(job)
 		run(root, cmake .. " -E rm -rf " .. Runtime.Quote(build .. "/stage") .. " " .. Runtime.Quote(build .. "/bootstrap"), scope)
@@ -116,6 +124,9 @@ function Package.Run(root: string, targetName: string)
 		return
 	end
 
+	if deployTool == "" then
+		error("package build requires KERO_DEPLOY_TOOL")
+	end
 	local environment = "KERO_WASM=" .. Runtime.Quote(wasm)
 		.. " KERO_HOST=" .. Runtime.Quote(host)
 		.. " KERO_DEPLOY_TOOL=" .. Runtime.Quote(deployTool)
