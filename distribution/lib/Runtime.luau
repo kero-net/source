@@ -186,6 +186,8 @@ end
 
 function Runtime.Run(root: string, line: string, reportFailure: boolean?, scope: string?): (boolean, string)
 	local name = (scope or "controller"):gsub("[^%w%-_.]", "-")
+	Runtime.WriteDirectory(root .. "/.heap")
+	Runtime.WriteDirectory(root .. "/.heap/logs")
 	local stageLog = root .. "/.heap/logs/" .. name .. ".log"
 	if not fs.isFile(stageLog) then
 		fs.writeFile(stageLog, "KERO stage log: " .. name .. "\n\n")
