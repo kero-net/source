@@ -118,32 +118,50 @@ function Runtime.StartDisplay(names: { string })
 end
 
 function Runtime.Job(name: string, state: JobState, detail: string?, total: number?)
-	Display.Update(assert(display, "display has not started"), name, state, detail, total)
+	if display then
+		Display.Update(display, name, state, detail, total)
+	else
+		print(string.format("[%s] %s%s", state, name, if detail then ": " .. detail else ""))
+	end
 	recordRunLog(string.format("[%s] %s%s", state, name, if detail then ": " .. detail else ""))
 end
 
 function Runtime.Step(name: string, action: string, message: string)
-	Display.Step(assert(display, "display has not started"), name, action, message)
+	if display then
+		Display.Step(display, name, action, message)
+	else
+		print(string.format("[%s] %s: %s", action:lower(), name, message))
+	end
 	recordRunLog(string.format("[%s] %s: %s", action:lower(), name, message))
 	stepStarted[name] = { started = wallMilliseconds(), label = message }
 end
 
 function Runtime.StepComplete(name: string)
-	Display.StepComplete(assert(display, "display has not started"), name)
+	if display then
+		Display.StepComplete(display, name)
+	end
 	local step = stepStarted[name]
 	if step then
 		local elapsed = wallMilliseconds() - step.started
 		if elapsed >= 0 then
 			local line = string.format("[timing] %s: %s %.2fs", name, step.label, elapsed / 1000)
 			recordRunLog(line)
-			Display.Status(display, "Timing", line)
+			if display then
+				Display.Status(display, "Timing", line)
+			else
+				print(line)
+			end
 		end
 		stepStarted[name] = nil
 	end
 end
 
 function Runtime.Status(action: string, message: string, dim: boolean?)
-	Display.Status(display, action, message, dim)
+	if display then
+		Display.Status(display, action, message, dim)
+	else
+		print(string.format("[%s] %s", action:lower(), message))
+	end
 	recordRunLog(string.format("[%s] %s", action:lower(), message))
 end
 
@@ -152,7 +170,11 @@ function Runtime.Confirm(message: string): boolean
 end
 
 function Runtime.Finish(message: string)
-	Display.Message(display, message)
+	if display then
+		Display.Message(display, message)
+	else
+		print(message)
+	end
 	recordRunLog(message)
 end
 
@@ -183,7 +205,11 @@ function Runtime.Run(root: string, line: string, reportFailure: boolean?, scope:
 		if chunk == nil then
 			break
 		end
-		Display.Output(display, chunk)
+		if display then
+			Display.Output(display, chunk)
+		else
+			print(chunk)
+		end
 	end
 	local result = child:status()
 	if result.ok then
