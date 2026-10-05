@@ -1,0 +1,10 @@
+# Self-hosted runners are opt-in resources.
+# A runner may only be selected when the triggering actor or associated PR
+# author is listed here and the workflow/target pair matches.
+
+[[runner]]
+id = "aarch64-windows"
+users = ["Kooraseru"]
+workflows = ["publication"]
+targets = ["windows-arm64"]
+labels = ["self-hosted", "Windows", "ARM64"]

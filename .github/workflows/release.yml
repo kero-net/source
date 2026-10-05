@@ -111,14 +111,36 @@ jobs:
     needs: resolve-publication
     if: needs.resolve-publication.outputs.enabled == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
+      self-hosted-allowed: ${{ steps.runner-policy.outputs.allowed }}
+      self-hosted-target: windows-arm64
+      self-hosted-labels: ${{ steps.runner-policy.outputs.labels }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.source-sha }}
           persist-credentials: false
       - uses: ./.github/actions/setup-lune
+      - name: Resolve associated pull request authors
+        id: pr-context
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          authors="$(gh api             -H 'Accept: application/vnd.github+json'             "/repos/$GITHUB_REPOSITORY/commits/${{ inputs.source-sha }}/pulls"             --jq '[.[].user.login] | unique | join(",")' 2>/dev/null || true)"
+          echo "authors=$authors" >> "$GITHUB_OUTPUT"
+      - name: Resolve self-hosted runner policy
+        id: runner-policy
+        env:
+          KERO_SELF_HOSTED_WORKFLOW: publication
+          KERO_SELF_HOSTED_TARGET: windows-arm64
+          KERO_TRIGGER_ACTOR: ${{ github.triggering_actor }}
+          KERO_PR_AUTHORS: ${{ steps.pr-context.outputs.authors }}
+        run: lune run .github/scripts/self-hosted-runner.luau
       - id: plan
         run: |
           set -o pipefail
@@ -159,7 +181,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.package-plan.outputs.matrix) }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.target == needs.package-plan.outputs.self-hosted-target && needs.package-plan.outputs.self-hosted-allowed == 'true' && fromJSON(needs.package-plan.outputs.self-hosted-labels) || matrix.os }}
     steps:
       - name: Check out validated source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
