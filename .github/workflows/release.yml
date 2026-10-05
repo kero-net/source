@@ -110,7 +110,10 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup-lune
       - id: plan
-        run: echo "matrix=$(lune run .github/scripts/distribution-matrix.luau)" >> "$GITHUB_OUTPUT"
+        run: |
+          set -o pipefail
+          matrix="$(lune run .github/scripts/distribution-matrix.luau | tail -n 1)"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
   build-release-packages:
     name: Sign package (${{ matrix.target }})
