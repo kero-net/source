@@ -23,8 +23,8 @@ export type VersionedDownload = {
 
 export type Configuration = {
 	aqtinstall: string,
-	llvmMingw: { version: string, archive: string, sha256: string },
-	llvmMingwX64: { version: string, archive: string, sha256: string },
+	llvmMingw: { version: string, archive: string, baseUrl: string, sha256: string },
+	llvmMingwX64: { version: string, archive: string, baseUrl: string, sha256: string },
 	zig: VersionedDownload,
 	linuxdeploy: { version: string, baseUrl: string, aarch64Sha256: string, x86_64Sha256: string },
 	appImageRuntime: { version: string, baseUrl: string, aarch64Sha256: string, x86_64Sha256: string },
@@ -126,8 +126,8 @@ function Resolve.Read(root: string): Configuration
 
 	return {
 		aqtinstall = stringField(tableField(aqtinstall, "tool", "aqtinstall"), "version", "aqtinstall"),
-		llvmMingw = { version = llvmVersion, archive = stringField(llvm, "archive", "llvm-mingw"), sha256 = stringField(llvm, "sha256", "llvm-mingw") },
-		llvmMingwX64 = { version = llvmVersion, archive = stringField(llvmX64, "archive", "llvm-mingw"), sha256 = stringField(llvmX64, "sha256", "llvm-mingw") },
+		llvmMingw = { version = llvmVersion, archive = stringField(llvm, "archive", "llvm-mingw"), baseUrl = stringField(llvm, "base-url", "llvm-mingw"), sha256 = stringField(llvm, "sha256", "llvm-mingw") },
+		llvmMingwX64 = { version = llvmVersion, archive = stringField(llvmX64, "archive", "llvm-mingw"), baseUrl = stringField(llvmX64, "base-url", "llvm-mingw"), sha256 = stringField(llvmX64, "sha256", "llvm-mingw") },
 		zig = { version = zigVersion, archive = zigDownload.archive, url = zigDownload.url, sha256 = zigDownload.sha256 },
 		linuxdeploy = { version = linuxdeployVersion, baseUrl = stringField(deploy, "base-url", "linuxdeploy"), aarch64Sha256 = stringField(linuxdeployAarch64, "sha256", "linuxdeploy"), x86_64Sha256 = stringField(linuxdeployX64, "sha256", "linuxdeploy") },
 		appImageRuntime = { version = runtimeVersion, baseUrl = stringField(runtime, "base-url", "appimage-runtime"), aarch64Sha256 = stringField(runtimeAarch64, "sha256", "appimage-runtime"), x86_64Sha256 = stringField(runtimeX64, "sha256", "appimage-runtime") },
