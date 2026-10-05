@@ -267,6 +267,7 @@ jobs:
       actions: read
       contents: write
       checks: read
+      pull-requests: read
     uses: ./.github/workflows/release.yml
     with:
       source-sha: ${{ github.sha }}
