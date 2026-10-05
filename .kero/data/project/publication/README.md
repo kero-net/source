@@ -12,6 +12,13 @@ src:source  -->  kero:canary
 Publication is validated first using outputs beneath `kero-net/source/.heap/`.
 The public branches are generated and must not be hand-edited.
 
+Release signing is optional. A protected private key and passphrase together
+enable signed packages, generated commits, and tags; absent signing secrets
+produce checksummed unsigned packages, unsigned commits, and annotated tags.
+A partial private-key configuration fails before packaging. A configured public
+fingerprint alone does not require signing. Publication still requires its
+separate organization token and release environment authorization.
+
 ## Decision
 
 All generated channels use one path schema. Channel selection may change

@@ -34,8 +34,9 @@ if not payload or payload == "" then fail("publication payload is required") end
 if not token or token == "" then fail("KERO_RELEASE_TOKEN is required") end
 if gh_token ~= token then fail("GH_TOKEN must be the Frogge publication token") end
 if not packages or packages == "" then
-  fail("signed release packages directory is required")
+  fail("release packages directory is required")
 end
+local signing = os.getenv("KERO_SIGN_RELEASE") == "1"
 
 local config_ok, config = pcall(kst.parse_file, root .. "/repo/config.kst")
 if not config_ok then fail(config) end
@@ -118,14 +119,14 @@ if tag_exists then
   local ok, message = command.run(worktree,
     "git fetch --quiet --no-tags origin " .. command.quote(tag_ref .. ":" .. tag_ref), true)
   checked(ok, message)
-  checked(command.run(worktree, "git verify-tag " .. command.quote(tag), true))
+  if signing then checked(command.run(worktree, "git verify-tag " .. command.quote(tag), true)) end
   local tagged_publication, publication_error = command.capture(worktree,
     "git show " .. command.quote(tag .. ":publication.toml"))
   if not tagged_publication then cleanup(); fail(publication_error) end
   if not policy.release_identity_matches(tagged_publication, channel, version) then
     cleanup(); fail(tag .. " points to a different publication identity")
   end
-  checked(command.run(worktree, "git verify-commit " .. command.quote(tag .. "^{}"), true))
+  if signing then checked(command.run(worktree, "git verify-commit " .. command.quote(tag .. "^{}"), true)) end
 end
 
 local exists = command.run(worktree, "git ls-remote --exit-code origin " .. command.quote("refs/heads/" .. channel) .. " >/dev/null 2>&1", true)
@@ -151,14 +152,14 @@ checked(command.run(worktree, "find . -mindepth 1 -maxdepth 1 ! -name .git -exec
 checked(command.run(worktree, "cp -R " .. command.quote(absolute_payload .. "/.") .. " .", true))
 checked(command.run(worktree, "git add -A", true))
 checked(command.run(worktree,
-  "git commit -S -m " .. command.quote("Generate " .. channel .. " " .. version)
+  "git commit " .. (signing and "-S " or "") .. "-m " .. command.quote("Generate " .. channel .. " " .. version)
     .. " -m " .. command.quote("Source commit: " .. source_commit), true))
-checked(command.run(worktree, "git verify-commit HEAD", true))
+if signing then checked(command.run(worktree, "git verify-commit HEAD", true)) end
 
 local push = "git push --quiet origin " .. command.quote("HEAD:refs/heads/" .. channel)
 if not tag_exists then
-  checked(command.run(worktree, "git tag -s -m " .. command.quote(tag) .. " " .. command.quote(tag) .. " HEAD", true))
-  checked(command.run(worktree, "git verify-tag " .. command.quote(tag), true))
+  checked(command.run(worktree, "git tag " .. (signing and "-s" or "-a") .. " -m " .. command.quote(tag) .. " " .. command.quote(tag) .. " HEAD", true))
+  if signing then checked(command.run(worktree, "git verify-tag " .. command.quote(tag), true)) end
   push = "git push --quiet --atomic origin " .. command.quote("HEAD:refs/heads/" .. channel)
     .. " " .. command.quote(tag_ref .. ":" .. tag_ref)
 end
@@ -174,7 +175,7 @@ recreate_release()
 local package_files, package_error = command.capture(root,
   "find " .. command.quote(packages) .. " -type f -print")
 if not package_files or package_files == "" then
-  cleanup(); fail("no signed release packages found: " .. tostring(package_error or packages))
+  cleanup(); fail("no release packages found: " .. tostring(package_error or packages))
 end
 local upload_files = {}
 for file in package_files:gmatch("[^\n]+") do upload_files[#upload_files + 1] = command.quote(file) end
