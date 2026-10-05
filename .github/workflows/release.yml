@@ -248,7 +248,7 @@ jobs:
             echo "KERO_DEPLOY_TOOL=$qt/bin/windeployqt.exe"
             echo "CARGO_TARGET_X86_64_PC_WINDOWS_GNULLVM_LINKER=$(cygpath -m "$bin/x86_64-w64-mingw32-clang.exe")"
           } >> "$GITHUB_ENV"
-          echo "$(cygpath -w "$bin")" >> "$GITHUB_PATH"
+          cygpath -w "$bin" >> "$GITHUB_PATH"
       - name: Install Linux AppImage tooling
         if: matrix.builder_kind == 'wsl-linux'
         shell: bash
