@@ -31,6 +31,13 @@ creation is local and unsigned by default; remote source review does not build
 or sign contributor artifacts. The separate build/test evidence contract avoids
 mistaking a cross-build or emulated run for native release proof.
 
+Source-review CI validates repository contracts, Rust, automation, documentation,
+localization, and generated Pages/repository inputs. It does not build platform
+packages. After a successful CI gate on a `source` push, the publication
+decision may call the separate publication workflow; that workflow builds
+packages only when the authored publication record enables release. This
+replaces the earlier CI package matrix that ran before publication was decided.
+
 Implementation progress is tracked under [`roadmap/`](roadmap/). The
 prototype-to-Qt migration state is recorded in
 [`qt-host-transition.md`](qt-host-transition.md). The active shared-editor and
