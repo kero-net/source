@@ -102,44 +102,13 @@ if ! command -v cargo >/dev/null 2>&1; then
   exit 1
 fi
 
-lune_version=''
-if command -v lune >/dev/null 2>&1; then
-  lune_version=$(lune --version 2>/dev/null || true)
-fi
-
-if printf '%s' "$lune_version" | grep -q '0\.10\.5'; then
-  kero_luau=$(command -v lune)
-else
-  printf '%s\n\n' 'KERO requires Lune 0.10.5 (the pinned Luau VM) inside WSL.'
-  printf '%s' 'Install Lune 0.10.5 now with Cargo? [Y/n] '
-  read -r answer
-
-  case "$answer" in
-    ''|y|Y|yes|YES|Yes)
-      if ! command -v cargo >/dev/null 2>&1; then
-        echo 'Cannot install Lune because Cargo is not installed in this WSL distribution.' >&2
-        echo 'Install Rust/Cargo in WSL, then run Kero: Validate Locally again.' >&2
-        exit 1
-      fi
-      printf '%s\r' 'Installing Lune 0.10.5 with Cargo...'
-      if ! cargo install lune --version 0.10.5 --locked --force >"$logs/bootstrap.log" 2>&1; then
-        printf '\n%s\n' 'Lune installation failed. See .heap/logs/bootstrap.log.' >&2
-        exit 1
-      fi
-      hash -r
-      kero_luau=$(command -v lune)
-      if ! "$kero_luau" --version | grep -q '0\.10\.5'; then
-        printf '\n%s\n' 'Cargo finished, but Lune 0.10.5 could not be verified.' >&2
-        exit 1
-      fi
-      printf '%s\n' 'Installed Lune 0.10.5.                     '
-      ;;
-    *)
-      echo 'Lune was not installed; local validation was not started.' >&2
-      exit 1
-      ;;
-  esac
-fi
+lune_directory="$heap/cache/toolchains/lune"
+bash "$workspace/distribution/actions/install-lune.sh" "$lune_directory" >"$logs/bootstrap.log" 2>&1 || {
+  echo 'Could not install the pinned Lune release. See .heap/logs/bootstrap.log.' >&2
+  exit 1
+}
+export PATH="$lune_directory:$PATH"
+kero_luau="$lune_directory/lune"
 
 export KERO_LUAU="$kero_luau"
 export KERO_HEAP_PREPARED=1

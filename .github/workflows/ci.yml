@@ -23,7 +23,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Lune
-        run: cargo install lune --version 0.10.5 --locked
+        uses: ./.github/actions/setup-lune
       - name: Validate source branch
         uses: ./.github/actions/branches
         with:
@@ -50,10 +50,12 @@ jobs:
           persist-credentials: false
       - name: Install WASM core target
         run: rustup target add wasm32-wasip1
-      - name: Set up Lune
-        run: cargo install lune --version 0.10.5 --locked
-      - name: Run shared Rust checks
-        run: lune run .github/scripts/source-checks.luau rust
+      - name: Check Rust formatting
+        run: cargo fmt --manifest-path src/Cargo.toml --all --check
+      - name: Check Rust lints
+        run: cargo clippy --manifest-path src/Cargo.toml --all-targets --all-features --locked -- -D warnings
+      - name: Test Rust
+        run: cargo test --manifest-path src/Cargo.toml --all-targets --locked
 
   github-actions:
     name: GitHub Actions
@@ -65,7 +67,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Lune
-        run: cargo install lune --version 0.10.5 --locked
+        uses: ./.github/actions/setup-lune
       - name: Run shared automation checks
         run: lune run .github/scripts/source-checks.luau automation
 
@@ -79,9 +81,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up groff
-        run: sudo apt-get update && sudo apt-get install --yes groff && cargo install lune --version 0.10.5 --locked
-      - name: Run shared documentation checks
-        run: lune run .github/scripts/source-checks.luau documentation
+        run: sudo apt-get update && sudo apt-get install --yes groff
+      - name: Check manpage
+        run: groff -z -mandoc src/man/kero.1
 
   localization:
     name: Localization
@@ -93,7 +95,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Lune
-        run: cargo install lune --version 0.10.5 --locked
+        uses: ./.github/actions/setup-lune
       - name: Run shared localization checks
         run: lune run .github/scripts/source-checks.luau localization
 
@@ -107,7 +109,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Lune
-        run: cargo install lune --version 0.10.5 --locked
+        uses: ./.github/actions/setup-lune
       - name: Run shared release-system checks
         run: lune run .github/scripts/source-checks.luau release
 
@@ -121,7 +123,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Pages tooling
-        run: sudo apt-get update && sudo apt-get install --yes pandoc && cargo install lune --version 0.10.5 --locked
+        run: sudo apt-get update && sudo apt-get install --yes pandoc
+      - name: Set up Lune
+        uses: ./.github/actions/setup-lune
       - name: Build Pages
         uses: ./.github/actions/build-pages
         with:
@@ -142,7 +146,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up repository tooling
-        run: sudo apt-get update && sudo apt-get install --yes pandoc && cargo install lune --version 0.10.5 --locked
+        run: sudo apt-get update && sudo apt-get install --yes pandoc
+      - name: Set up Lune
+        uses: ./.github/actions/setup-lune
       - name: Build generated repository
         uses: ./.github/actions/build-repo
         with:
@@ -191,10 +197,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Set up Lune
-        run: cargo install lune --version 0.10.5 --locked
       - name: Validate dependency inputs
-        run: lune run .github/scripts/dependency-inputs.luau
+        run: test -f src/Cargo.lock && test -f .github/dependabot.yml
       - name: Review dependency changes
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
@@ -211,7 +215,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - run: cargo install lune --version 0.10.5 --locked
+      - uses: ./.github/actions/setup-lune
       - id: plan
         run: echo "matrix=$(lune run .github/scripts/distribution-matrix.luau)" >> "$GITHUB_OUTPUT"
 
@@ -230,8 +234,7 @@ jobs:
       - name: Install WASM core target
         run: rustup target add wasm32-wasip1
       - name: Set up Lune
-        shell: bash
-        run: cargo install lune --version 0.10.5 --locked
+        uses: ./.github/actions/setup-lune
       - name: Set up MSVC
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1

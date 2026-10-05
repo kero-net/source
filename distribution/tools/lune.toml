@@ -3,3 +3,11 @@ name = "lune"
 version = "0.10.5"
 executable = "lune"
 purpose = "Luau build runtime"
+
+[checksums]
+linux_x86_64 = "1fb5dee6a1afa1d300092805c6e660fe06144d29dd68c45cf6956f040667f791"
+linux_aarch64 = "176e1272d41ba3d9ea30087b528048a4a97e3d74cfa0eaa5d35d9e0d4122caa6"
+macos_x86_64 = "f4b43cfd495994b7ef783ac2bb0aa24f1f940f3804b28018121bb3cc2171c1a7"
+macos_aarch64 = "bdb94f47bc1d3af3e3fe796cfce9c7f406042d4aada9cc41a1c53836f3e3b411"
+windows_x86_64 = "ad0305f5cc6d7ff20996644b40bf7de0de613812f431ca241456e16f9fc89cda"
+windows_aarch64 = "b98bc49ded9183951c1d01b428872cd8ce518f200b48824ea3b31e3d7dec28ae"
