@@ -9,6 +9,8 @@ inputs:
     required: true
   payload:
     required: true
+  packages:
+    required: true
 outputs:
   generated-commit:
     description: Commit published to the generated branch.
@@ -19,8 +21,9 @@ runs:
     - id: publish
       shell: bash
       run: >-
-        lua5.4 "$GITHUB_ACTION_PATH/main.lua"
+        lune run "$GITHUB_ACTION_PATH/main.luau"
         "${{ inputs.channel }}"
         "${{ inputs.version }}"
         "${{ inputs.source-commit }}"
         "${{ inputs.payload }}"
+        "${{ inputs.packages }}"

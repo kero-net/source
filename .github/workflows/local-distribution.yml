@@ -1,0 +1,12 @@
+name: Local distribution portable checks
+
+on:
+  workflow_dispatch:
+
+jobs:
+  portable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-lune
+      - run: KERO_PORTABLE_WORKFLOW=1 lune run .github/scripts/distribution-portable.luau

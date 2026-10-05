@@ -6,9 +6,9 @@
 
 ```bash
 git clone https://github.com/kero-net/kero.git
-cd kero/code
+cd kero/src
 cargo test --all-targets --all-features --locked
-cargo run -p kero-cli -- --help
+cargo run -p kero-cli --bin kero-host -- --help
 ```
 
 {{ l10n:getting-started.project_model }}

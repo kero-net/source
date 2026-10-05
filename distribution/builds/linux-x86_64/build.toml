@@ -1,0 +1,37 @@
+[distribution]
+id = "linux-x64"
+enabled = true
+lifecycle = "active"
+platform = "linux"
+architecture = "x86_64"
+artifact = "kero.AppImage"
+final-artifact = "linux-x86_64.AppImage"
+native-host = "linux-x64"
+preset = "linux-x64"
+
+[rust]
+target = "x86_64-unknown-linux-gnu"
+
+[qt]
+version = "6.8.3"
+host = "linux"
+architecture = "linux_gcc_64"
+directory = "gcc_64"
+
+[builder]
+kind = "wsl-linux"
+depends-on = ["linux-arm64"]
+distribution = "Ubuntu"
+linuxdeploy-architecture = "x86_64"
+cross = true
+
+[dependencies]
+aqtinstall = "3.3.0"
+zig = "0.15.2"
+linuxdeploy = "1-alpha-20251107-1"
+appimage-runtime = "20251108"
+qemu = "8.2.2-0ubuntu1.18"
+ubuntu-rootfs = "24.04.3"
+
+[hosted]
+runner = "ubuntu-latest"

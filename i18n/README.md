@@ -39,4 +39,4 @@ The current catalogs are:
 - `repository.toml` for public repository README content.
 - `releases.toml` for localized release terminology.
 
-Run `lua5.4 i18n/validate.lua` to validate registry and catalog structure.
+Run `lune run i18n/validate.luau` to validate registry and catalog structure.

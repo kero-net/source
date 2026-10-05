@@ -51,11 +51,11 @@ ja-JP = "正規知識は明示的および派生した起源を保持します�
 en-US = "Status"
 ja-JP = "状態"
 [status.pre_alpha.values]
-en-US = "KERO is pre-alpha and is being rebuilt around its knowledge-system architecture. No stable product commands or storage formats exist yet."
-ja-JP = "KERO はプレアルファであり、知識システムのアーキテクチャを中心に再構築中です。安定した製品コマンドや保存形式はまだありません。"
+en-US = "KERO is pre-alpha. Its project, compilation, query, trace, and bounded-context interfaces are evolving before 1.0."
+ja-JP = "KERO はプレアルファです。プロジェクト、コンパイル、クエリ、トレース、限定コンテキストの各インターフェースは 1.0 に向けて進化中です。"
 [status.cli.values]
-en-US = "The current Rust workspace is a clean foundation. Build it and inspect the placeholder CLI while the typed project and semantic APIs are implemented."
-ja-JP = "現在の Rust ワークスペースはクリーンな基盤です。型付きプロジェクト API とセマンティック API の実装中は、ビルドして仮の CLI を確認できます。"
+en-US = "The Rust workspace provides a project-attached knowledge CLI. Initialize or open a KERO project, compile explicitly annotated Markdown sources, inspect status, query records, and trace provenance."
+ja-JP = "Rust ワークスペースはプロジェクトに接続された知識 CLI を提供します。KERO プロジェクトを初期化または開き、明示的に注釈付けした Markdown ソースをコンパイルし、状態の確認、レコードのクエリ、来歴のトレースを行えます。"
 
 [development.heading.values]
 en-US = "Development"
@@ -70,6 +70,53 @@ ja-JP = "プロジェクト"
 [project.repository_topology.values]
 en-US = "kero-net/source contains authored code and construction inputs. Automation projects reviewed commits into canary, beta, and stable branches of kero-net/kero."
 ja-JP = "kero-net/source には作成されたコードと構築入力が含まれます。自動化により、レビュー済みコミットを kero-net/kero の canary、beta、stable ブランチへ投影します。"
+
+[navigation.setup.values]
+en-US = "Set up"
+ja-JP = "セットアップ"
+
+[setup.heading.values]
+en-US = "Set up KERO"
+ja-JP = "KERO のセットアップ"
+[setup.introduction.values]
+en-US = "KERO uses Rust and the native build tools for your operating system. Choose the instructions for the shell and system you use."
+ja-JP = "KERO は Rust と OS に対応するネイティブビルドツールを使用します。使用する OS とシェルに対応する手順を選んでください。"
+[setup.windows_heading.values]
+en-US = "Windows"
+ja-JP = "Windows"
+[setup.windows_intro.values]
+en-US = "Install Rust and the native build tools required by the Rust toolchain you choose. This is a local build prerequisite only; KERO behavior and repository configuration are the same across supported systems and CPU architectures."
+ja-JP = "Rust と、選択した Rust ツールチェーンに必要なネイティブビルドツールをインストールします。これはローカルビルドの前提条件のみであり、KERO の動作とリポジトリ設定は対応するシステムおよび CPU アーキテクチャ間で共通です。"
+[setup.windows_after_install.values]
+en-US = "Open a new terminal window after installation, then clone and build:"
+ja-JP = "インストール後に新しいターミナルウィンドウを開き、次のコマンドでクローンしてビルドします。"
+[setup.macos_heading.values]
+en-US = "macOS (Terminal)"
+ja-JP = "macOS (ターミナル)"
+[setup.macos_intro.values]
+en-US = "Install the Xcode Command Line Tools, then install Rust in Terminal."
+ja-JP = "Xcode Command Line Tools をインストールしてから、ターミナルで Rust をインストールします。"
+[setup.linux_heading.values]
+en-US = "Linux (Bash or a compatible shell)"
+ja-JP = "Linux (Bash または互換シェル)"
+[setup.linux_intro.values]
+en-US = "Install your distribution's C/C++ build tools and curl, then install Rust."
+ja-JP = "ディストリビューションの C/C++ ビルドツールと curl をインストールしてから、Rust をインストールします。"
+[setup.debian_heading.values]
+en-US = "Ubuntu or Debian"
+ja-JP = "Ubuntu または Debian"
+[setup.fedora_heading.values]
+en-US = "Fedora"
+ja-JP = "Fedora"
+[setup.arch_heading.values]
+en-US = "Arch Linux"
+ja-JP = "Arch Linux"
+[setup.unix_build_intro.values]
+en-US = "Install Rust on macOS or Linux, then clone and build:"
+ja-JP = "macOS または Linux では Rust をインストールしてから、次のコマンドでクローンしてビルドします。"
+[setup.note.values]
+en-US = "The commands above are shared template content rather than translations, so every locale receives the same reviewed setup instructions."
+ja-JP = "上記のコマンドは翻訳ではなく共有テンプレートの内容です。すべてのロケールで同じレビュー済みのセットアップ手順を提供します。"
 
 [license.heading.values]
 en-US = "License"

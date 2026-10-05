@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Kero
+Comment=Kero local environment installer and host
+Exec=kero-install
+Icon=kero
+Categories=Development;Utility;
+Terminal=false

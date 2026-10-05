@@ -1,0 +1,614 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>KeroInstallWizard</class>
+ <widget class="QWizard" name="KeroInstallWizard">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>720</width>
+    <height>500</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>720</width>
+    <height>500</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>KERO Setup</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="../resources/kero.qrc">
+    <normaloff>:/images/kero-icon.png</normaloff>:/images/kero-icon.png</iconset>
+  </property>
+  <property name="wizardStyle">
+   <enum>QWizard::ModernStyle</enum>
+  </property>
+  <property name="options">
+   <set>QWizard::NoBackButtonOnStartPage|QWizard::NoBackButtonOnLastPage</set>
+  </property>
+
+  <widget class="QWizardPage" name="welcomePage">
+   <property name="title">
+    <string>Welcome to KERO Setup</string>
+   </property>
+   <property name="subTitle">
+    <string>Setup will guide you through the installation of KERO.</string>
+   </property>
+   <layout class="QVBoxLayout" name="welcomeLayout">
+    <item>
+     <widget class="QLabel" name="welcomeHeadingLabel">
+      <property name="font">
+       <font>
+        <pointsize>18</pointsize>
+        <bold>true</bold>
+       </font>
+      </property>
+      <property name="text">
+       <string>Install KERO</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QLabel" name="welcomeBodyLabel">
+      <property name="text">
+       <string>KERO installs a portable core and a small local host. You will choose its home, repository-enrollment behavior, and trust defaults before anything is changed.</string>
+      </property>
+      <property name="wordWrap">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="AspectFillLabel" name="welcomeBackgroundLabel">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>1</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>190</height>
+       </size>
+      </property>
+      <property name="frameShape">
+       <enum>QFrame::NoFrame</enum>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
+      <property name="pixmap">
+       <pixmap resource="../resources/kero.qrc">:/images/kero-background.png</pixmap>
+      </property>
+      <property name="scaledContents">
+       <bool>false</bool>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QLabel" name="welcomeHintLabel">
+      <property name="text">
+       <string>Click Next to continue.</string>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+
+  <widget class="QWizardPage" name="installLocationPage">
+   <property name="title">
+    <string>Install Location</string>
+   </property>
+   <property name="subTitle">
+    <string>Choose the folder in which to install KERO.</string>
+   </property>
+   <layout class="QVBoxLayout" name="installLocationLayout">
+    <item>
+     <widget class="QLabel" name="installPathLabel">
+      <property name="text">
+       <string>Install KERO to:</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="installPathRow">
+      <item>
+       <widget class="QLineEdit" name="installPathEdit">
+        <property name="placeholderText">
+         <string>Platform-default install location</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="browseInstallPathButton">
+        <property name="text">
+         <string>Browse...</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QLabel" name="installPathHintLabel">
+      <property name="text">
+       <string>This installs the KERO host applications and portable KERO core. The installer will show whether the chosen location needs elevation.</string>
+      </property>
+      <property name="wordWrap">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <spacer name="installSpacer">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+      <property name="sizeHint" stdset="0">
+       <size>
+        <width>20</width>
+        <height>250</height>
+       </size>
+      </property>
+     </spacer>
+    </item>
+   </layout>
+  </widget>
+
+  <widget class="QWizardPage" name="homePage">
+   <property name="title">
+    <string>Choose KERO Home</string>
+   </property>
+   <property name="subTitle">
+    <string>Choose where KERO stores user data and configuration.</string>
+   </property>
+   <layout class="QVBoxLayout" name="homeLayout">
+    <item>
+     <widget class="QGroupBox" name="homeGroup">
+      <property name="title">
+       <string>KERO home</string>
+      </property>
+      <layout class="QVBoxLayout" name="homeGroupLayout">
+       <item>
+        <widget class="QRadioButton" name="userLocalHomeRadio">
+         <property name="text">
+          <string>User-local home (recommended)</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="userLocalHomeHint">
+         <property name="text">
+          <string>Stores KERO data for the current user.</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+         <property name="indent">
+          <number>24</number>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QRadioButton" name="systemWideHomeRadio">
+         <property name="text">
+          <string>System-wide home</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="systemWideHomeHint">
+         <property name="text">
+          <string>Shares KERO data across users. May require elevation.</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+         <property name="indent">
+          <number>24</number>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QRadioButton" name="customHomeRadio">
+         <property name="text">
+          <string>Custom home</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="customHomePathLayout">
+         <property name="leftMargin">
+          <number>24</number>
+         </property>
+         <item>
+          <widget class="QLineEdit" name="customHomePathEdit">
+           <property name="placeholderText">
+            <string>Choose a KERO home path</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="browseHomePathButton">
+           <property name="text">
+            <string>Browse...</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QLabel" name="homePathHint">
+         <property name="text">
+          <string>The selected path is used as KERO_HOME. Default: ~/.kero.</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+         <property name="indent">
+          <number>24</number>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <spacer name="homeSpacer">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+      <property name="sizeHint" stdset="0">
+       <size>
+        <width>20</width>
+        <height>245</height>
+       </size>
+      </property>
+     </spacer>
+    </item>
+   </layout>
+  </widget>
+
+  <widget class="QWizardPage" name="enrollmentPage">
+   <property name="title">
+    <string>Repository Enrollment</string>
+   </property>
+   <property name="subTitle">
+    <string>Choose how KERO handles repository enrollment.</string>
+   </property>
+   <layout class="QVBoxLayout" name="enrollmentLayout">
+    <item>
+     <widget class="QGroupBox" name="enrollmentGroup">
+      <property name="title">
+       <string>Repository enrollment</string>
+      </property>
+      <layout class="QVBoxLayout" name="enrollmentGroupLayout">
+       <item>
+        <widget class="QRadioButton" name="askEnrollmentRadio">
+         <property name="text">
+          <string>Ask (recommended)</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="askEnrollmentHint">
+         <property name="text">
+          <string>Ask before enrolling a repository.</string>
+         </property>
+         <property name="indent">
+          <number>24</number>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QRadioButton" name="automaticEnrollmentRadio">
+         <property name="text">
+          <string>Automatic</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="automaticEnrollmentHint">
+         <property name="text">
+          <string>Automatically enroll supported repositories.</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+         <property name="indent">
+          <number>24</number>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QRadioButton" name="manualEnrollmentRadio">
+         <property name="text">
+          <string>Manual</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="manualEnrollmentHint">
+         <property name="text">
+          <string>Never enroll a repository unless explicitly requested.</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+         <property name="indent">
+          <number>24</number>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <spacer name="enrollmentSpacer">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+      <property name="sizeHint" stdset="0">
+       <size>
+        <width>20</width>
+        <height>160</height>
+       </size>
+      </property>
+     </spacer>
+    </item>
+   </layout>
+  </widget>
+
+  <widget class="QWizardPage" name="identityVerificationPage">
+   <property name="title">
+    <string>Identity and Verification</string>
+   </property>
+   <property name="subTitle">
+    <string>Configure the default identity and verification behavior.</string>
+   </property>
+   <property name="commitPage">
+    <bool>true</bool>
+   </property>
+   <layout class="QVBoxLayout" name="identityVerificationLayout">
+    <item>
+     <widget class="QGroupBox" name="identityGroup">
+      <property name="title">
+       <string>Identity</string>
+      </property>
+      <layout class="QVBoxLayout" name="identityLayout">
+       <item>
+        <widget class="QRadioButton" name="reuseIdentityRadio">
+         <property name="text">
+          <string>Reuse an existing identity when available</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QRadioButton" name="configureIdentityLaterRadio">
+         <property name="text">
+          <string>Configure later</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QGroupBox" name="verificationGroup">
+      <property name="title">
+       <string>Verification policy</string>
+      </property>
+      <layout class="QVBoxLayout" name="verificationLayout">
+       <item>
+        <widget class="QRadioButton" name="automaticVerificationRadio">
+         <property name="text">
+          <string>Automatic (recommended)</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="automaticVerificationHint">
+         <property name="text">
+          <string>Verify when a signature and verifier are available; report trust state without blocking work.</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+         <property name="indent">
+          <number>24</number>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QRadioButton" name="warnVerificationRadio">
+         <property name="text">
+          <string>Warn</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QRadioButton" name="strictVerificationRadio">
+         <property name="text">
+          <string>Strict</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QRadioButton" name="permissiveVerificationRadio">
+         <property name="text">
+          <string>Permissive</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <spacer name="identitySpacer">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+      <property name="sizeHint" stdset="0">
+       <size>
+        <width>20</width>
+        <height>100</height>
+       </size>
+      </property>
+     </spacer>
+    </item>
+   </layout>
+  </widget>
+
+  <widget class="QWizardPage" name="installingPage">
+   <property name="title">
+    <string>Installing KERO</string>
+   </property>
+   <property name="subTitle">
+    <string>Please wait while setup installs KERO.</string>
+   </property>
+   <layout class="QVBoxLayout" name="installingLayout">
+    <item>
+     <widget class="QLabel" name="installStatusLabel">
+      <property name="text">
+       <string>Preparing installation...</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QProgressBar" name="installProgressBar">
+      <property name="value">
+       <number>0</number>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QPlainTextEdit" name="installDetailsTextEdit">
+      <property name="readOnly">
+       <bool>true</bool>
+      </property>
+      <property name="placeholderText">
+       <string>Installation details will appear here.</string>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+
+  <widget class="QWizardPage" name="finishPage">
+   <property name="title">
+    <string>KERO Setup Complete</string>
+   </property>
+   <property name="subTitle">
+    <string>KERO has been installed successfully.</string>
+   </property>
+   <layout class="QVBoxLayout" name="finishLayout">
+    <item>
+     <widget class="QLabel" name="finishHeadingLabel">
+      <property name="font">
+       <font>
+        <pointsize>16</pointsize>
+        <bold>true</bold>
+       </font>
+      </property>
+      <property name="text">
+       <string>KERO is ready to use.</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QLabel" name="finishBodyLabel">
+      <property name="text">
+       <string>KERO home, repository enrollment, and verification defaults are ready. You can change them later from KERO.</string>
+      </property>
+      <property name="wordWrap">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QCheckBox" name="launchKeroCheckBox">
+      <property name="text">
+       <string>Launch KERO</string>
+      </property>
+      <property name="checked">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QLabel" name="additionalOptionsLabel">
+      <property name="text">
+       <string>Additional options</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QCheckBox" name="desktopShortcutCheckBox">
+      <property name="text">
+       <string>Create a desktop shortcut</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QCheckBox" name="startMenuShortcutCheckBox">
+      <property name="text">
+       <string>Add KERO to Start menu and search</string>
+      </property>
+      <property name="checked">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QCheckBox" name="openHomeCheckBox">
+      <property name="text">
+       <string>Open KERO home after setup</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <spacer name="finishSpacer">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+      <property name="sizeHint" stdset="0">
+       <size>
+        <width>20</width>
+        <height>220</height>
+       </size>
+      </property>
+     </spacer>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>AspectFillLabel</class>
+   <extends>QLabel</extends>
+   <header>aspect_fill_label.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="../resources/kero.qrc"/>
+ </resources>
+ <connections/>
+</ui>

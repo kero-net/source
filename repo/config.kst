@@ -1,0 +1,5 @@
+repository
+	target kero-net/kero
+	channel canary
+	channel beta
+	channel stable
