@@ -1,5 +1,8 @@
 --!nonstrict
 
+local runtime = require("../actions/lib/legacy-runtime")
+local io = runtime.io
+local process = require("@lune/process")
 local Serde = require("@lune/serde")
 local Toml = require("../../distribution/lib/configuration/toml")
 
@@ -20,10 +23,10 @@ local function split(value)
 	return values
 end
 
-local workflow = assert(os.getenv("KERO_SELF_HOSTED_WORKFLOW"), "KERO_SELF_HOSTED_WORKFLOW is required")
-local target = assert(os.getenv("KERO_SELF_HOSTED_TARGET"), "KERO_SELF_HOSTED_TARGET is required")
-local triggerActor = os.getenv("KERO_TRIGGER_ACTOR") or ""
-local pullRequestAuthors = split(os.getenv("KERO_PR_AUTHORS") or "")
+local workflow = assert(process.env.KERO_SELF_HOSTED_WORKFLOW, "KERO_SELF_HOSTED_WORKFLOW is required")
+local target = assert(process.env.KERO_SELF_HOSTED_TARGET, "KERO_SELF_HOSTED_TARGET is required")
+local triggerActor = process.env.KERO_TRIGGER_ACTOR or ""
+local pullRequestAuthors = split(process.env.KERO_PR_AUTHORS or "")
 
 local policy = Toml.Read(".github/self-hosted-runners.toml")
 local runners = policy.runner or {}
@@ -58,7 +61,7 @@ end
 local labels = if selected then selected.labels else {}
 local runnerId = if selected then selected.id else ""
 
-local output = os.getenv("GITHUB_OUTPUT")
+local output = process.env.GITHUB_OUTPUT
 if output then
 	local stream = assert(io.open(output, "a"))
 	stream:write("allowed=", if allowed then "true" else "false", "\n")
