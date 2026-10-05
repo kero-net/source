@@ -126,7 +126,21 @@ fn built_cli_captures_lists_and_removes_knowledge_snapshots() {
 
 fn build_wasm_core(workspace: &Path) -> PathBuf {
     let manifest = workspace.join("Cargo.toml");
+    let target_dir = std::env::var_os("CARGO_TARGET_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            workspace
+                .parent()
+                .unwrap()
+                .join(".heap/build/cargo/default")
+        });
+    let target_dir = if target_dir.is_absolute() {
+        target_dir
+    } else {
+        workspace.parent().unwrap().join(target_dir)
+    };
     let status = Command::new("cargo")
+        .env("CARGO_TARGET_DIR", &target_dir)
         .args(["build", "--manifest-path"])
         .arg(manifest)
         .args(["-p", "kero-core", "--target", "wasm32-wasip1"])
@@ -136,7 +150,7 @@ fn build_wasm_core(workspace: &Path) -> PathBuf {
         status.success(),
         "could not build the WASM core for smoke testing"
     );
-    let runtime = workspace.join("target/wasm32-wasip1/debug/kero_core.wasm");
+    let runtime = target_dir.join("wasm32-wasip1/debug/kero_core.wasm");
     assert!(runtime.is_file(), "WASM core artifact was not produced");
     runtime
 }

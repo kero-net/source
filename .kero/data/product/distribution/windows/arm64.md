@@ -7,6 +7,9 @@ compiler. Contributors building this target need the appropriate MSVC ARM64
 Build Tools and Windows SDK, and the build must run in an ARM64-capable MSVC
 developer environment. The portable core target also requires
 `wasm32-wasip1` through Rust.
+The cross-compiled ARM64 Qt kit also requires the matching x64 MSVC Qt host
+kit for build tools. Local validation acquires both kits from the pinned Qt
+version into `.heap` and passes the host kit as `QT_HOST_PATH`.
 
 The package validator rejects LLVM/MinGW when paired with this Qt kit.
 

@@ -34,4 +34,3 @@ aqtinstall = "3.3.0"
 
 [hosted]
 runner = "windows-11-arm"
-lua = "lua"

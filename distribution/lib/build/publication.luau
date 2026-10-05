@@ -49,7 +49,7 @@ local function writeIndexes(publisher: Publisher)
 		"",
 		"Status: **" .. (if complete then "complete" else "incomplete") .. "**",
 		"",
-		"Unsigned clean-room artifacts for revision `" .. publisher.revision .. "`.",
+		"Unsigned locally validated artifacts for revision `" .. publisher.revision .. "`.",
 		"",
 		"## Completed artifacts",
 		"",
@@ -89,12 +89,33 @@ end
 
 local Publication = {}
 
-function Publication.Create(root: string, targets: { Settings.Target }): Publisher
+function Publication.Create(root: string, targets: { Settings.Target }, resume: boolean?): Publisher
 	local revision, message = Runtime.Capture(root, "git rev-parse HEAD")
 	assert(revision, "cannot determine source revision: " .. tostring(message))
 	local states: { [string]: State } = {}
+	local digests: { [string]: string } = {}
 	for _, target in targets do
 		states[target.name] = "pending"
+	end
+	local index = root .. "/.heap/artifacts/SHA256SUMS"
+	if resume and Runtime.IsFile(index) then
+		local recorded: { [string]: string } = {}
+		for line in Runtime.ReadFile(index):gmatch("[^\r\n]+") do
+			local digest, filename = line:match("^([0-9a-fA-F]+)  distributions/(.+)$")
+			if digest and filename then recorded[filename] = digest:lower() end
+		end
+		for _, target in targets do
+			local expected = recorded[target.finalArtifact]
+			local artifact = root .. "/.heap/artifacts/distributions/" .. target.finalArtifact
+			if expected and #expected == 64 and Runtime.IsFile(artifact) then
+				local output = Runtime.Capture(root, "sha256sum " .. Runtime.Quote(artifact))
+				local actual = if output then output:match("^([0-9a-fA-F]+)") else nil
+				if actual and actual:lower() == expected then
+					states[target.name] = "complete"
+					digests[target.name] = expected
+				end
+			end
+		end
 	end
 
 	Runtime.WriteDirectory(root .. "/.heap/artifacts")
@@ -104,7 +125,7 @@ function Publication.Create(root: string, targets: { Settings.Target }): Publish
 		revision = revision,
 		targets = targets,
 		states = states,
-		digests = {},
+		digests = digests,
 		details = {},
 		runFailures = {},
 		finalized = false,

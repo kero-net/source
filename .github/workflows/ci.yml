@@ -22,15 +22,15 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Set up Lua
-        run: sudo apt-get update && sudo apt-get install --yes lua5.4
+      - name: Set up Lune
+        run: cargo install lune --version 0.10.5 --locked
       - name: Validate source branch
         uses: ./.github/actions/branches
         with:
           branch: ${{ github.event.pull_request.base.ref || github.ref_name }}
           kind: source
       - name: Validate repository shape
-        run: KERO_LUA=lua5.4 lua5.4 .github/scripts/source-checks.lua contracts
+        run: lune run .github/scripts/source-checks.luau contracts
 
   rust:
     name: Rust (${{ matrix.os }})
@@ -40,11 +40,8 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            lua: lua5.4
           - os: macos-latest
-            lua: lua
           - os: windows-latest
-            lua: lua
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out source
@@ -53,18 +50,10 @@ jobs:
           persist-credentials: false
       - name: Install WASM core target
         run: rustup target add wasm32-wasip1
-      - name: Set up Lua
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install --yes lua5.4
-      - name: Set up Lua
-        if: runner.os == 'macOS'
-        run: brew install lua
-      - name: Set up Lua
-        if: runner.os == 'Windows'
-        shell: cmd
-        run: choco install lua --yes --no-progress
+      - name: Set up Lune
+        run: cargo install lune --version 0.10.5 --locked
       - name: Run shared Rust checks
-        run: ${{ matrix.lua }} .github/scripts/source-checks.lua rust
+        run: lune run .github/scripts/source-checks.luau rust
 
   github-actions:
     name: GitHub Actions
@@ -75,10 +64,10 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Set up Lua
-        run: sudo apt-get update && sudo apt-get install --yes lua5.4
+      - name: Set up Lune
+        run: cargo install lune --version 0.10.5 --locked
       - name: Run shared automation checks
-        run: KERO_LUA=lua5.4 KERO_LUAC=luac5.4 lua5.4 .github/scripts/source-checks.lua automation
+        run: lune run .github/scripts/source-checks.luau automation
 
   documentation:
     name: Documentation
@@ -90,9 +79,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up groff
-        run: sudo apt-get update && sudo apt-get install --yes groff lua5.4
+        run: sudo apt-get update && sudo apt-get install --yes groff && cargo install lune --version 0.10.5 --locked
       - name: Run shared documentation checks
-        run: lua5.4 .github/scripts/source-checks.lua documentation
+        run: lune run .github/scripts/source-checks.luau documentation
 
   localization:
     name: Localization
@@ -103,10 +92,10 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Set up Lua
-        run: sudo apt-get update && sudo apt-get install --yes lua5.4
+      - name: Set up Lune
+        run: cargo install lune --version 0.10.5 --locked
       - name: Run shared localization checks
-        run: KERO_LUA=lua5.4 lua5.4 .github/scripts/source-checks.lua localization
+        run: lune run .github/scripts/source-checks.luau localization
 
   release-system:
     name: Release System
@@ -117,10 +106,10 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Set up Lua
-        run: sudo apt-get update && sudo apt-get install --yes lua5.4
+      - name: Set up Lune
+        run: cargo install lune --version 0.10.5 --locked
       - name: Run shared release-system checks
-        run: KERO_LUA=lua5.4 lua5.4 .github/scripts/source-checks.lua release
+        run: lune run .github/scripts/source-checks.luau release
 
   build-pages:
     name: Build Pages
@@ -132,7 +121,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Pages tooling
-        run: sudo apt-get update && sudo apt-get install --yes lua5.4 pandoc
+        run: sudo apt-get update && sudo apt-get install --yes pandoc && cargo install lune --version 0.10.5 --locked
       - name: Build Pages
         uses: ./.github/actions/build-pages
         with:
@@ -153,7 +142,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up repository tooling
-        run: sudo apt-get update && sudo apt-get install --yes lua5.4 pandoc
+        run: sudo apt-get update && sudo apt-get install --yes pandoc && cargo install lune --version 0.10.5 --locked
       - name: Build generated repository
         uses: ./.github/actions/build-repo
         with:
@@ -202,10 +191,10 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Set up Lua
-        run: sudo apt-get update && sudo apt-get install --yes lua5.4
+      - name: Set up Lune
+        run: cargo install lune --version 0.10.5 --locked
       - name: Validate dependency inputs
-        run: lua5.4 .github/scripts/dependency-inputs.lua
+        run: lune run .github/scripts/dependency-inputs.luau
       - name: Review dependency changes
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
@@ -240,14 +229,6 @@ jobs:
           persist-credentials: false
       - name: Install WASM core target
         run: rustup target add wasm32-wasip1
-      - name: Set up Lua
-        shell: bash
-        run: sudo apt-get update && sudo apt-get install --yes lua5.4
-        if: runner.os == 'Linux'
-      - name: Set up Lua
-        shell: cmd
-        run: choco install lua --yes --no-progress
-        if: runner.os == 'Windows'
       - name: Set up Lune
         shell: bash
         run: cargo install lune --version 0.10.5 --locked

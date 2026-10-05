@@ -31,7 +31,6 @@ function GitHubBuildMatrix.Create(root: string): string
 			local fields: { string } = {
 				assert(field("target", target.name)),
 				assert(field("os", hosted.runner)),
-				assert(field("lua", hosted.lua)),
 				assert(field("qt_version", target.builder.qtVersion)),
 				assert(field("qt_host", target.builder.qtHost)),
 				assert(field("qt_arch", target.builder.qtArchitecture)),

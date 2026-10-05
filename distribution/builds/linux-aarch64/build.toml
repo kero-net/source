@@ -31,4 +31,3 @@ appimage-runtime = "20251108"
 
 [hosted]
 runner = "ubuntu-24.04-arm"
-lua = "lua5.4"

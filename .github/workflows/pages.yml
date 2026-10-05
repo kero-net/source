@@ -28,7 +28,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Pages tooling
-        run: sudo apt-get update && sudo apt-get install --yes lua5.4 pandoc
+        run: sudo apt-get update && sudo apt-get install --yes pandoc && cargo install lune --version 0.10.5 --locked
 
       - name: Validate source branch
         uses: ./.github/actions/branches

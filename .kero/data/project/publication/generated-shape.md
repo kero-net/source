@@ -10,8 +10,8 @@ source/
 ├── assets/              authored shared visual assets
 ├── releases/            authored release records and capture configuration
 ├── i18n/                shared locale registry and translation data
-├── pages/               Pages templates, configuration, and build.lua
-├── repo/                public repository templates, configuration, and build.lua
+├── pages/               Pages templates, configuration, and build.luau
+├── repo/                public repository templates, configuration, and build.luau
 ├── .github/
 │   ├── actions/         GitHub-specific operation implementations
 │   └── workflows/       triggers and job topology

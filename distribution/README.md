@@ -16,8 +16,14 @@ and extraction facts. `scripts/build/build-every-distribution.luau` is the only
 executable Luau file; all other Luau code is a module under `lib/`. Lune is the
 pinned standalone Luau VM used by the build boundary.
 
-A full run deletes and recreates `.heap/`; no generated file or downloaded
-tool may be required as an unstated input to the next run.
+An unchanged completed run verifies its four artifacts and returns. A changed
+source rebuilds packages using retained toolchains and compiler intermediates.
+After failure, a matching source fingerprint allows checksum-verified completed
+targets to resume. No generated file is a required input for a fresh build;
+set `KERO_CLEAN=1` to recreate `.heap/` from committed definitions.
+When correcting packaging orchestration only, an operator may set
+`KERO_REUSE_VERIFIED_ARTIFACTS=1` to reuse checksum-verified artifacts after a
+source-fingerprint change; this must not be used after product source changes.
 
 Each target declares its matching native host and toolchain. A package build
 must use that exact pairing; compiler families, Qt kits, and runtime deployment
@@ -64,15 +70,15 @@ it does not wait for unrelated targets.
 It reports the declared top-level actions as `Building [...] n/N` and writes
 the same command/result evidence to `.heap/logs/validate-locally.log`. Target
 specific acquisition records live below `.heap/logs/<target>/`.
-Downloaded dependency archives are retained under `.heap/artifacts/dependencies`;
-their extracted toolchains, Cargo output, and package staging are working state
-under `.heap/build/` and are removed after successful publication. Preparation
+Downloaded dependency archives and keyed toolchains are retained under `.heap/cache/`;
+Cargo output and package staging are working state under `.heap/build/` and
+are removed after successful publication. Preparation
 is dependency-aware and concurrent; package compilation remains serialized.
 If a later target fails, earlier verified artifacts and their checksums remain,
 and `RELEASE.md` marks the run incomplete.
 
-`act` is optional Linux-container parity and is not required for ordinary local
-validation. It contains no secret, token, or local state.
+`act` is optional Linux-container parity, enabled only with `KERO_RUN_ACT=1`.
+It contains no secret, token, or local state.
 
 For a Windows ARM64 package, the wrapper requires the Qt `msvc2022_arm64` kit
 and the matching Visual Studio ARM64 target compiler. It refuses to use an x64

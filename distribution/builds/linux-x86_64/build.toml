@@ -35,4 +35,3 @@ ubuntu-rootfs = "24.04.3"
 
 [hosted]
 runner = "ubuntu-latest"
-lua = "lua5.4"

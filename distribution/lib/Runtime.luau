@@ -10,8 +10,15 @@ local Display = require("./terminal/display")
 --# State
 
 local runLogPath: string? = nil
+local environmentOverrides: { [string]: string } = {}
 export type JobState = Display.JobState
 local display: Display.Controller? = nil
+local stepStarted: { [string]: { started: number, label: string } } = {}
+
+local function wallMilliseconds(): number
+	local result = process.exec("date", { "+%s%3N" })
+	return tonumber(result.stdout) or 0
+end
 
 --# Helpers
 
@@ -51,6 +58,7 @@ function Runtime.Quote(value: string): string
 end
 
 function Runtime.ReadFile(path: string): string
+	Runtime.Status("Reading", path)
 	return fs.readFile(path)
 end
 
@@ -79,6 +87,7 @@ function Runtime.IsDirectory(path: string): boolean
 end
 
 function Runtime.ReadDirectory(path: string): { string }
+	Runtime.Status("Listing", path)
 	return fs.readDir(path)
 end
 
@@ -108,9 +117,34 @@ function Runtime.StartDisplay(names: { string })
 	display = Display.Create(names)
 end
 
-function Runtime.Job(name: string, state: JobState, detail: string?)
-	Display.Update(assert(display, "display has not started"), name, state, detail)
+function Runtime.Job(name: string, state: JobState, detail: string?, total: number?)
+	Display.Update(assert(display, "display has not started"), name, state, detail, total)
 	recordRunLog(string.format("[%s] %s%s", state, name, if detail then ": " .. detail else ""))
+end
+
+function Runtime.Step(name: string, action: string, message: string)
+	Display.Step(assert(display, "display has not started"), name, action, message)
+	recordRunLog(string.format("[%s] %s: %s", action:lower(), name, message))
+	stepStarted[name] = { started = wallMilliseconds(), label = message }
+end
+
+function Runtime.StepComplete(name: string)
+	Display.StepComplete(assert(display, "display has not started"), name)
+	local step = stepStarted[name]
+	if step then
+		local elapsed = wallMilliseconds() - step.started
+		if elapsed >= 0 then
+			local line = string.format("[timing] %s: %s %.2fs", name, step.label, elapsed / 1000)
+			recordRunLog(line)
+			Display.Status(display, "Timing", line)
+		end
+		stepStarted[name] = nil
+	end
+end
+
+function Runtime.Status(action: string, message: string, dim: boolean?)
+	Display.Status(display, action, message, dim)
+	recordRunLog(string.format("[%s] %s", action:lower(), message))
 end
 
 function Runtime.Confirm(message: string): boolean
@@ -118,13 +152,14 @@ function Runtime.Confirm(message: string): boolean
 end
 
 function Runtime.Finish(message: string)
-	Display.Message(message)
+	Display.Message(display, message)
 	recordRunLog(message)
 end
 
 function Runtime.StartRunLog(path: string)
 	runLogPath = path
-	fs.writeFile(path, "KERO local build run log\n\n")
+	local previous = if fs.isFile(path) then fs.readFile(path) else ""
+	fs.writeFile(path, previous .. (if previous == "" then "KERO local build run log\n\n" else "\nKERO validation retry\n\n"))
 end
 
 function Runtime.Run(root: string, line: string, reportFailure: boolean?, scope: string?): (boolean, string)
@@ -133,38 +168,30 @@ function Runtime.Run(root: string, line: string, reportFailure: boolean?, scope:
 	if not fs.isFile(stageLog) then
 		fs.writeFile(stageLog, "KERO stage log: " .. name .. "\n\n")
 	end
+	Runtime.Status("Running", name .. ": " .. line)
 	recordRunLog("+ " .. line)
-	if process.os ~= "windows" and runLogPath then
-		local wrapped = "set -o pipefail; cd " .. shellQuote(root)
-			.. "; { " .. line .. "; } 2>&1 | tee -a " .. shellQuote(stageLog)
-			.. " >> " .. shellQuote(runLogPath)
-		local result = process.exec("/bin/bash", { "--noprofile", "--norc", "-lc", wrapped })
-		if result.ok then
-			recordRunLog("[ok] exit 0")
-			return true, ""
+	local wrapped = "set -o pipefail; cd " .. shellQuote(root)
+		.. " && { " .. line .. "; } 2>&1 | tee -a " .. shellQuote(stageLog)
+	if runLogPath then
+		wrapped ..= " " .. shellQuote(runLogPath)
+	end
+	local shell = Runtime.IsWindows() and (process.env.KERO_POSIX_SHELL or "C:/Program Files/Git/bin/sh.exe") or "/bin/bash"
+	local child = process.create(shell, { "--noprofile", "--norc", "-lc", wrapped }, { env = environmentOverrides })
+	child.stdin:close()
+	while true do
+		local chunk = child.stdout:read()
+		if chunk == nil then
+			break
 		end
-		local message = "command exited with code " .. tostring(result.code) .. "; see .heap/logs/" .. name .. ".log"
-		recordRunLog("[error] " .. message)
-		return false, message
+		Display.Output(display, chunk)
 	end
-
-	local shell = Runtime.IsWindows() and (process.env.KERO_POSIX_SHELL or "C:/Program Files/Git/bin/sh.exe") or "sh"
-	local result = process.exec(shell, { "-lc", "cd " .. Runtime.Quote(root) .. " && " .. line })
-
-	if result.stdout ~= "" then
-		recordRunLog((result.stdout:gsub("%s+$", "")))
-	end
-	if result.stderr ~= "" then
-		recordRunLog((result.stderr:gsub("%s+$", "")))
-	end
-
+	local result = child:status()
 	if result.ok then
 		recordRunLog("[ok] exit 0")
 		return true, ""
 	end
-
-	local message = result.stderr ~= "" and result.stderr or result.stdout
-	recordRunLog("[error] " .. message:gsub("%s+$", ""))
+	local message = "command exited with code " .. tostring(result.code) .. "; see .heap/logs/" .. name .. ".log"
+	recordRunLog("[error] " .. message)
 	if reportFailure ~= false then
 		recordRunLog("[error] Command failed; see .heap/logs/validate-locally.log for its complete output.")
 	end
@@ -173,7 +200,8 @@ end
 
 function Runtime.Capture(root: string, line: string): (string?, string?)
 	local shell = Runtime.IsWindows() and (process.env.KERO_POSIX_SHELL or "C:/Program Files/Git/bin/sh.exe") or "sh"
-	local result = process.exec(shell, { "-lc", "cd " .. Runtime.Quote(root) .. " && " .. line })
+	Runtime.Status("Inspecting", line)
+	local result = process.exec(shell, { "-lc", "cd " .. Runtime.Quote(root) .. " && " .. line }, { env = environmentOverrides })
 	recordRunLog("+ " .. line)
 	if result.stdout ~= "" then
 		recordRunLog((result.stdout:gsub("%s+$", "")))
@@ -197,6 +225,7 @@ end
 
 function Runtime.SetEnvironment(name: string, value: string)
 	process.env[name] = value
+	environmentOverrides[name] = value
 end
 
 function Runtime.CurrentDirectory(): string

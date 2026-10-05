@@ -16,6 +16,20 @@ local Target = {}
 type DownloadState = "active" | "complete" | "failed"
 local downloadStates: { [string]: DownloadState } = {}
 
+function Target.PrepareHostTools(root: string, configuration: Settings.Configuration)
+	local version = configuration.tools.aqtinstall
+	local abi, message = Runtime.Capture(root, "python3 -c 'import platform,sys; print(platform.machine()+\"-py\"+str(sys.version_info.major)+\".\"+str(sys.version_info.minor))'")
+	assert(abi, "cannot identify Python host ABI: " .. tostring(message))
+	local cacheRoot = Runtime.Environment("KERO_WSL_WORK_ROOT") or (root .. "/.heap")
+	local packages = cacheRoot .. "/cache/toolchains/python/aqtinstall-" .. version .. "-" .. abi
+	if Runtime.IsDirectory(packages .. "/aqt") then return end
+	local cache = cacheRoot .. "/cache/pip"
+	local passed, failure = Runtime.Run(root, "mkdir -p " .. Runtime.Quote(packages) .. " " .. Runtime.Quote(cache)
+		.. " && python3 -m pip install --disable-pip-version-check --cache-dir " .. Runtime.Quote(cache)
+		.. " --target " .. Runtime.Quote(packages) .. " aqtinstall==" .. version, true, "host-tool-preparation")
+	assert(passed, failure)
+end
+
 local function wslEnvironment(names: { string }): string
 	local inherited = Runtime.Environment("WSLENV")
 	if inherited and inherited ~= "" then
@@ -31,8 +45,22 @@ local function windowsArmCompiler(root: string): string
 end
 
 function Target.Preflight(root: string, configuration: Settings.Configuration)
+	local job = "toolchain preflight"
 	local windows = configuration.targets["windows-arm64"]
-	if not windows or not windows.enabled or windowsArmCompiler(root) ~= "" then
+	if not windows or not windows.enabled then
+		Runtime.Step(job, "Skipping", "Windows ARM64 compiler check")
+		Runtime.StepComplete(job)
+		Runtime.Step(job, "Skipping", "Windows ARM64 build tools")
+		Runtime.StepComplete(job)
+		return
+	end
+
+	Runtime.Step(job, "Checking", "Windows ARM64 compiler")
+	local compiler = windowsArmCompiler(root)
+	Runtime.StepComplete(job)
+	if compiler ~= "" then
+		Runtime.Step(job, "Checking", "Windows ARM64 build tools")
+		Runtime.StepComplete(job)
 		return
 	end
 
@@ -47,12 +75,13 @@ function Target.Preflight(root: string, configuration: Settings.Configuration)
 		table.insert(override, "--add")
 		table.insert(override, component)
 	end
-	Runtime.Job("toolchain preflight", "run", "installing Windows ARM64 build tools")
+	Runtime.Step(job, "Installing", "Windows ARM64 build tools")
 	local line = "winget.exe install --exact --source winget --accept-package-agreements --accept-source-agreements --id "
 		.. Runtime.Quote(package) .. " --override " .. Runtime.Quote(table.concat(override, " "))
 	local passed, message = Runtime.Run(root, line, true, "toolchain-preflight")
 	assert(passed, "Visual Studio Build Tools installation failed: " .. message)
 	assert(windowsArmCompiler(root) ~= "", "Visual Studio installation completed without the required ARM64 compiler")
+	Runtime.StepComplete(job)
 end
 
 local function environmentScope(values: { [string]: string }, callback: () -> ())
@@ -62,12 +91,29 @@ local function environmentScope(values: { [string]: string }, callback: () -> ()
 		Runtime.SetEnvironment(name, value)
 	end
 	local succeeded, failure = pcall(callback)
-	for name, value in pairs(previous) do
-		Runtime.SetEnvironment(name, value or "")
+	for name in pairs(values) do
+		Runtime.SetEnvironment(name, previous[name] or "")
 	end
 	if not succeeded then
 		error(tostring(failure), 0)
 	end
+end
+
+function Target.PreparationSteps(target: Settings.Target, configuration: Settings.Configuration): number
+	if target.builder.kind == "windows-msvc" then
+		return if target.builder.qtHostArchitecture then 3 else 2
+	end
+	if target.builder.kind == "windows-llvm" then
+		return 2
+	end
+	if target.builder.kind == "wsl-linux" then
+		local total = 3
+		if target.name == "linux-x64" then
+			total += 4 + #configuration.tools.ubuntuX64Libraries
+		end
+		return total
+	end
+	error("unsupported builder kind: " .. target.builder.kind)
 end
 
 function Target.Prepare(root: string, name: string, configuration: Settings.Configuration?): Prepared
@@ -75,8 +121,13 @@ function Target.Prepare(root: string, name: string, configuration: Settings.Conf
 	local target = assert(activeConfiguration.targets[name], "unknown distribution target: " .. name)
 	assert(target.enabled, name .. " is " .. target.lifecycle)
 	local builder = target.builder
-	local dependencies = root .. "/.heap/artifacts/dependencies"
-	local tools = root .. "/.heap/build/toolchains"
+	local job = "prepare " .. name
+	local dependencies = root .. "/.heap/cache/downloads"
+	local tools = root .. "/.heap/cache/toolchains"
+	if builder.kind == "wsl-linux" then
+		local wslRoot = assert(Runtime.Environment("KERO_WSL_WORK_ROOT"), "Linux builds require an ext4 work root")
+		tools = wslRoot .. "/cache/toolchains"
+	end
 
 	local function run(line: string)
 		local passed, message = Runtime.Run(root, line, true, name .. "-prepare")
@@ -97,20 +148,23 @@ function Target.Prepare(root: string, name: string, configuration: Settings.Conf
 
 		local directory = assert(path:match("^(.+)/[^/]+$"), "dependency path has no parent: " .. path)
 		local packageName = assert(path:match("([^/]+)$"), "dependency path has no file name: " .. path)
+		local cached = Runtime.IsFile(path)
+		Runtime.Step(job, if cached then "Checking" else "Downloading", packageName)
 		run("mkdir -p " .. Runtime.Quote(directory))
 		downloadStates[path] = "active"
 		local succeeded, failure = pcall(function()
-			if not Runtime.IsFile(path) then
+			if not cached then
 				local temporary = path .. ".partial"
-				Runtime.Log(":: Retrieving package: " .. packageName)
+				local dns = if Runtime.Environment("KERO_CURL_DOH") == "1"
+					then " --doh-url https://1.1.1.1/dns-query --resolve 1.1.1.1:443:1.1.1.1"
+					else ""
 				run("rm -f " .. Runtime.Quote(temporary)
-					.. " && curl --fail --location --retry 3 " .. Runtime.Quote(url)
+					.. " && curl --fail --location --retry 3" .. dns .. " " .. Runtime.Quote(url)
 					.. " --output " .. Runtime.Quote(temporary))
 				local temporaryOutput = capture("sha256sum " .. Runtime.Quote(temporary))
 				local temporaryDigest = assert(temporaryOutput:match("^([0-9a-fA-F]+)"), "checksum output is invalid: " .. temporary)
 				assert(temporaryDigest:lower() == checksum, "download checksum mismatch: " .. path)
 				run("mv " .. Runtime.Quote(temporary) .. " " .. Runtime.Quote(path))
-				Runtime.Log(":: Retrieved package: " .. packageName)
 			end
 			local output = capture("sha256sum " .. Runtime.Quote(path))
 			local digest = assert(output:match("^([0-9a-fA-F]+)"), "checksum output is invalid: " .. path)
@@ -121,32 +175,37 @@ function Target.Prepare(root: string, name: string, configuration: Settings.Conf
 			error(tostring(failure), 0)
 		end
 		downloadStates[path] = "complete"
+		Runtime.StepComplete(job)
 	end
 
-	local function ensureQt(item: Settings.Builder, targetName: string): string
+	local function ensureQt(item: Settings.Builder, targetName: string, architecture: string?, directory: string?): string
 		local prefix = tools .. "/qt/" .. targetName
-		local kit = prefix .. "/" .. item.qtVersion .. "/" .. item.qtDirectory
-		if Runtime.IsFile(kit .. "/lib/cmake/Qt6/Qt6Config.cmake") then
+		local kit = prefix .. "/" .. item.qtVersion .. "/" .. (directory or item.qtDirectory)
+		local needsIcu = item.qtHost:match("^linux") ~= nil
+		local installed = Runtime.IsFile(kit .. "/lib/cmake/Qt6/Qt6Config.cmake")
+			and (not needsIcu or Runtime.IsFile(kit .. "/lib/libicui18n.so.73"))
+		Runtime.Step(job, if installed then "Checking" else "Downloading", "Qt " .. item.qtVersion .. " " .. (directory or item.qtDirectory) .. " for " .. targetName)
+		if installed then
+			Runtime.StepComplete(job)
 			return kit
 		end
 
-		local packages = tools .. "/python/" .. targetName .. "/site-packages"
-		local cache = dependencies .. "/pip/" .. targetName
+		local abi = assert(Runtime.Capture(root, "python3 -c 'import platform,sys; print(platform.machine()+\"-py\"+str(sys.version_info.major)+\".\"+str(sys.version_info.minor))'"))
+		local cacheRoot = Runtime.Environment("KERO_WSL_WORK_ROOT") or (root .. "/.heap")
+		local packages = cacheRoot .. "/cache/toolchains/python/aqtinstall-" .. activeConfiguration.tools.aqtinstall .. "-" .. abi
 		local archives = dependencies .. "/qt/" .. targetName
 		local logs = root .. "/.heap/logs/" .. targetName
-		run("mkdir -p " .. Runtime.Quote(packages) .. " " .. Runtime.Quote(cache) .. " " .. Runtime.Quote(archives) .. " " .. Runtime.Quote(logs))
-		if not Runtime.IsDirectory(packages .. "/aqt") then
-			run("python3 -m pip install --disable-pip-version-check --cache-dir " .. Runtime.Quote(cache)
-				.. " --target " .. Runtime.Quote(packages) .. " aqtinstall==" .. activeConfiguration.tools.aqtinstall)
-		end
-		Runtime.Log(":: Retrieving package: Qt " .. item.qtVersion .. " for " .. targetName)
+		assert(Runtime.IsDirectory(packages .. "/aqt"), "shared aqtinstall host tool was not prepared")
+		run("mkdir -p " .. Runtime.Quote(archives) .. " " .. Runtime.Quote(logs))
 		local invocation = "cd " .. Runtime.Quote(logs)
 			.. " && PYTHONPATH=" .. Runtime.Quote(packages)
-			.. " python3 -m aqt install-qt " .. item.qtHost .. " desktop " .. item.qtVersion .. " " .. item.qtArchitecture
+			.. " python3 -m aqt install-qt " .. item.qtHost .. " desktop " .. item.qtVersion .. " " .. (architecture or item.qtArchitecture)
+			.. " --archives qtbase" .. (if needsIcu then " icu" else "")
 			.. " -k -d " .. Runtime.Quote(archives) .. " -O " .. Runtime.Quote(prefix)
 		run(invocation)
-		assert(Runtime.IsFile(kit .. "/lib/cmake/Qt6/Qt6Config.cmake"), "Qt installation is incomplete for " .. targetName)
-		Runtime.Log(":: Retrieved package: Qt " .. item.qtVersion .. " for " .. targetName)
+		assert(Runtime.IsFile(kit .. "/lib/cmake/Qt6/Qt6Config.cmake")
+			and (not needsIcu or Runtime.IsFile(kit .. "/lib/libicui18n.so.73")), "Qt installation is incomplete for " .. targetName)
+		Runtime.StepComplete(job)
 		return kit
 	end
 
@@ -155,21 +214,31 @@ function Target.Prepare(root: string, name: string, configuration: Settings.Conf
 	drivers["windows-msvc"] = function()
 		assert(Runtime.IsWsl(), "windows-msvc requires the WSL controller")
 		local qt = ensureQt(builder, name)
+		local qtHost: string? = nil
+		if builder.qtHostArchitecture then
+			local hostDirectory = assert(builder.qtHostArchitecture:match("^win64_(.+)$"), "unsupported Qt host architecture")
+			qtHost = ensureQt(builder, name, builder.qtHostArchitecture, hostDirectory)
+		end
+		Runtime.Step(job, "Checking", "Windows ARM64 compiler and SDK")
 		local compiler = windowsArmCompiler(root)
-		local sdkInclude = capture([[find '/mnt/c/Program Files (x86)/Windows Kits/10/Include' -type f -path '*/um/windows.h' -print 2>/dev/null | sort | tail -n 1]])
+		local sdkInclude = capture([[find '/mnt/c/Program Files (x86)/Windows Kits/10/Include' -type f -ipath '*/um/windows.h' -print 2>/dev/null | sort | tail -n 1]])
 		assert(compiler ~= "" and sdkInclude ~= "", "Windows ARM64 requires Visual Studio Build Tools with ARM64 C++ tools and the Windows SDK")
+		Runtime.StepComplete(job)
 		local msvc = assert(compiler:match("^(.+)/bin/Hostarm64/arm64/cl%.exe$"))
-		local sdk = assert(sdkInclude:match("/Include/([^/]+)/um/windows%.h$"))
+		local sdk = assert(sdkInclude:match("/Include/([^/]+)/um/[Ww]indows%.h$"))
 		local kits = "/mnt/c/Program Files (x86)/Windows Kits/10"
 		local bin = msvc .. "/bin/Hostarm64/arm64"
 		local environment = {
 			KERO_QT_PREFIX = qt,
+			KERO_QT_HOST_PATH = qtHost or "",
 			KERO_MSVC_ROOT = msvc,
 			KERO_WINDOWS_SDK = kits,
 			KERO_WINDOWS_SDK_VERSION = sdk,
 			KERO_MSVC_LINKER = bin .. "/link.exe",
 			KERO_MSVC_LINKER_POSIX = bin .. "/link.exe",
 			KERO_MSVC_ARCHIVER = bin .. "/lib.exe",
+			KERO_MSVC_RC = capture("wslpath -m " .. Runtime.Quote(kits .. "/bin/" .. sdk .. "/arm64/rc.exe")),
+			KERO_MSVC_MT = capture("wslpath -m " .. Runtime.Quote(kits .. "/bin/" .. sdk .. "/arm64/mt.exe")),
 			KERO_CXX_COMPILER = bin .. "/cl.exe",
 			CARGO_TARGET_AARCH64_PC_WINDOWS_MSVC_LINKER = bin .. "/link.exe",
 			VCToolsInstallDir = msvc .. "/",
@@ -184,8 +253,8 @@ function Target.Prepare(root: string, name: string, configuration: Settings.Conf
 			KERO_CARGO = "cargo.exe",
 			KERO_RUSTUP = "rustup.exe",
 			KERO_CMAKE = "cmake.exe",
-			KERO_DEPLOY_TOOL = qt .. "/bin/windeployqt.exe",
-			WSLENV = wslEnvironment({ "KERO_QT_PREFIX/p", "KERO_MSVC_ROOT/p", "KERO_WINDOWS_SDK/p", "KERO_MSVC_LINKER/p", "KERO_MSVC_ARCHIVER/p", "KERO_CXX_COMPILER/p", "CARGO_TARGET_AARCH64_PC_WINDOWS_MSVC_LINKER/p", "VCToolsInstallDir/p", "VCINSTALLDIR/p", "WindowsSdkDir/p", "UniversalCRTSdkDir/p", "KERO_WINDOWS_SDK_VERSION", "WindowsSDKVersion", "UCRTVersion", "INCLUDE/lp", "LIB/lp", "CARGO_TARGET_DIR/p", "KERO_ICON/p", "KERO_WASM/p", "KERO_HOST/p", "KERO_DEPLOY_TOOL/p" }),
+			KERO_DEPLOY_TOOL = (qtHost or qt) .. "/bin/windeployqt.exe",
+			WSLENV = wslEnvironment({ "KERO_QT_PREFIX/p", "KERO_QT_HOST_PATH/p", "KERO_MSVC_ROOT/p", "KERO_WINDOWS_SDK/p", "KERO_MSVC_LINKER/p", "KERO_MSVC_ARCHIVER/p", "KERO_MSVC_RC", "KERO_MSVC_MT", "KERO_CXX_COMPILER/p", "CARGO_TARGET_AARCH64_PC_WINDOWS_MSVC_LINKER/p", "VCToolsInstallDir/p", "VCINSTALLDIR/p", "WindowsSdkDir/p", "UniversalCRTSdkDir/p", "KERO_WINDOWS_SDK_VERSION", "WindowsSDKVersion", "UCRTVersion", "INCLUDE/lp", "LIB/lp", "CARGO_TARGET_DIR/p", "KERO_ICON", "KERO_WASM", "KERO_HOST", "KERO_DEPLOY_TOOL" }),
 		}
 		return function()
 			environmentScope(environment, function()
@@ -202,13 +271,14 @@ function Target.Prepare(root: string, name: string, configuration: Settings.Conf
 		download("https://github.com/mstorsjo/llvm-mingw/releases/download/" .. definition.version .. "/" .. definition.archive, archive, definition.sha256)
 		local extracted = tools .. "/llvm-mingw/llvm-mingw-" .. definition.version .. "-ucrt-aarch64"
 		if not Runtime.IsFile(extracted .. "/bin/x86_64-w64-mingw32-clang++.exe") then
+			Runtime.Status("Extracting", "llvm-mingw " .. definition.version)
 			run("mkdir -p " .. Runtime.Quote(tools .. "/llvm-mingw") .. " && unzip -q " .. Runtime.Quote(archive) .. " -d " .. Runtime.Quote(tools .. "/llvm-mingw"))
 		end
 		local bin = extracted .. "/bin"
 		local environment = {
 			KERO_QT_PREFIX = qt,
 			KERO_CXX_COMPILER = bin .. "/x86_64-w64-mingw32-clang++.exe",
-			KERO_WINDRES = bin .. "/x86_64-w64-mingw32-windres.exe",
+			KERO_WINDRES = capture("wslpath -m " .. Runtime.Quote(bin .. "/x86_64-w64-mingw32-windres.exe")),
 			KERO_RUNTIME_DIR = extracted .. "/x86_64-w64-mingw32/bin",
 			KERO_CARGO = "cargo.exe +stable-aarch64-pc-windows-gnullvm",
 			KERO_RUSTUP = "rustup.exe",
@@ -216,7 +286,7 @@ function Target.Prepare(root: string, name: string, configuration: Settings.Conf
 			KERO_CMAKE = "cmake.exe",
 			KERO_DEPLOY_TOOL = qt .. "/bin/windeployqt.exe",
 			PATH = bin .. ":" .. (Runtime.Environment("PATH") or ""),
-			WSLENV = wslEnvironment({ "KERO_QT_PREFIX/p", "KERO_CXX_COMPILER/p", "KERO_WINDRES/p", "KERO_RUNTIME_DIR/p", "CARGO_TARGET_DIR/p", "KERO_ICON/p", "KERO_WASM/p", "KERO_HOST/p", "KERO_DEPLOY_TOOL/p" }),
+			WSLENV = wslEnvironment({ "KERO_QT_PREFIX/p", "KERO_CXX_COMPILER/p", "KERO_WINDRES", "KERO_RUNTIME_DIR/p", "CARGO_TARGET_DIR/p", "KERO_ICON", "KERO_WASM", "KERO_HOST", "KERO_DEPLOY_TOOL" }),
 		}
 		return function()
 			environmentScope(environment, function()
@@ -247,12 +317,14 @@ function Target.Prepare(root: string, name: string, configuration: Settings.Conf
 			download(zig.url, zigArchive, zig.sha256)
 			local zigRoot = tools .. "/zig/zig-aarch64-linux-" .. zig.version
 			if not Runtime.IsFile(zigRoot .. "/zig") then
+				Runtime.Status("Extracting", "Zig " .. zig.version)
 				run("mkdir -p " .. Runtime.Quote(tools .. "/zig") .. " && tar -xf " .. Runtime.Quote(zigArchive) .. " -C " .. Runtime.Quote(tools .. "/zig"))
 			end
 			local qemu = activeConfiguration.tools.qemuX64
 			local qemuArchive = dependencies .. "/qemu/" .. qemu.archive
 			download(qemu.url, qemuArchive, qemu.sha256)
 			if not Runtime.IsFile(tools .. "/qemu/usr/bin/qemu-x86_64-static") then
+				Runtime.Status("Extracting", "QEMU x86_64")
 				run("dpkg-deb -x " .. Runtime.Quote(qemuArchive) .. " " .. Runtime.Quote(tools .. "/qemu"))
 			end
 			local image = activeConfiguration.tools.ubuntuX64Rootfs
@@ -260,11 +332,13 @@ function Target.Prepare(root: string, name: string, configuration: Settings.Conf
 			download(image.url, imageArchive, image.sha256)
 			local rootfs = tools .. "/linux-x64/rootfs"
 			if not Runtime.IsFile(rootfs .. "/bin/bash") then
+				Runtime.Status("Extracting", "Ubuntu x86_64 rootfs")
 				run("mkdir -p " .. Runtime.Quote(rootfs) .. " && tar -xzf " .. Runtime.Quote(imageArchive) .. " -C " .. Runtime.Quote(rootfs))
 			end
 			for _, library in activeConfiguration.tools.ubuntuX64Libraries do
 				local libraryArchive = dependencies .. "/ubuntu-libraries/" .. library.archive
 				download(library.url, libraryArchive, library.sha256)
+				Runtime.Status("Extracting", library.archive)
 				run("dpkg-deb -x " .. Runtime.Quote(libraryArchive) .. " " .. Runtime.Quote(rootfs))
 			end
 		end
