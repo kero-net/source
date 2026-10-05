@@ -66,9 +66,11 @@ function Package.Run(root: string, targetName: string)
 	Toolchain.Verify(root, targetName)
 	Runtime.StepComplete(job)
 
-	Runtime.Step(job, "Checking", "release signing configuration")
-	SigningKey.Verify(root)
-	Runtime.StepComplete(job)
+	if Runtime.Environment("KERO_SIGN_RELEASE") == "1" then
+		Runtime.Step(job, "Checking", "release signing configuration")
+		assert(SigningKey.Verify(root), "release signing requires an available private key")
+		Runtime.StepComplete(job)
+	end
 
 	local cargo = Runtime.Environment("KERO_CARGO") or "cargo"
 	local rustup = Runtime.Environment("KERO_RUSTUP") or "rustup"
