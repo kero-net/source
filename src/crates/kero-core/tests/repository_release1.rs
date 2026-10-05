@@ -265,7 +265,7 @@ fn materialized_mount_rejects_links_and_removes_the_partial_snapshot() {
     symlink(source.data.join("safe.txt"), source.data.join("escape.txt")).unwrap();
 
     let error = materialize_mount(&target, "unsafe", &source_root).unwrap_err();
-    assert!(error.to_string().contains("symlink"));
+    assert!(error.to_string().contains("symbolic link"));
     assert!(!target.mounts.join("unsafe").exists());
     assert!(target.data.is_dir());
 }

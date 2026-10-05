@@ -831,6 +831,7 @@ fn materialize_snapshot(
         }
     })?;
 
+    let mut published = false;
     let result = (|| {
         let destination_case_sensitive = destination_is_case_sensitive(&staging)?;
         let (digest, files) = copy_materialized_tree(
@@ -839,7 +840,10 @@ fn materialize_snapshot(
             Path::new(""),
             destination_case_sensitive,
         )?;
+        let staging_permissions = fs::metadata(&staging)?.permissions();
         set_tree_readonly(&staging, true)?;
+        // The root must stay writable until rename on some Unix filesystems.
+        fs::set_permissions(&staging, staging_permissions.clone())?;
         let provenance = MountProvenance {
             name: mount.into(),
             source_root,
@@ -861,11 +865,19 @@ fn materialize_snapshot(
             let _ = fs::remove_file(&metadata_path);
             return Err(RepositoryError::Io(error));
         }
+        published = true;
+        let mut readonly_permissions = staging_permissions;
+        readonly_permissions.set_readonly(true);
+        if let Err(error) = fs::set_permissions(&destination, readonly_permissions) {
+            let _ = fs::remove_file(&metadata_path);
+            return Err(RepositoryError::Io(error));
+        }
         Ok(provenance)
     })();
     if result.is_err() {
-        let _ = set_tree_readonly(&staging, false);
-        let _ = fs::remove_dir_all(&staging);
+        let cleanup = if published { &destination } else { &staging };
+        let _ = set_tree_readonly(cleanup, false);
+        let _ = fs::remove_dir_all(cleanup);
     }
     result
 }
