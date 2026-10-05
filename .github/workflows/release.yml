@@ -141,10 +141,10 @@ jobs:
           ref: ${{ inputs.source-sha }}
           persist-credentials: false
       - name: Set up GPG
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && needs.validate-release-key.outputs.signing == 'true'
         run: sudo apt-get update && sudo apt-get install --yes gnupg
       - name: Set up GPG
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && needs.validate-release-key.outputs.signing == 'true'
         shell: cmd
         run: choco install gnupg --yes --no-progress
       - name: Install WASM core target
@@ -195,6 +195,7 @@ jobs:
           {
             echo "KERO_QT_PREFIX=$QT_ROOT_DIR"
             echo "KERO_LINUXDEPLOY=$RUNNER_TEMP/linuxdeploy"
+            echo "KERO_DEPLOY_TOOL=$RUNNER_TEMP/linuxdeploy"
             echo "APPIMAGE_EXTRACT_AND_RUN=1"
           } >> "$GITHUB_ENV"
       - name: Configure protected release signing
