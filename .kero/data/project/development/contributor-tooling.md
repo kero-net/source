@@ -207,6 +207,15 @@ automation prerequisite. The source helper adapter under
 `.github/actions/lib/legacy-runtime.luau` preserves the existing file and
 process behavior while these subsystems move to direct Lune APIs.
 
+The pinned Lune release version and per-platform SHA-256 digests are owned by
+`distribution/tools/lune.toml`. GitHub jobs that execute Luau install the
+verified prebuilt release through the source-owned setup action into runner
+temporary storage. Local WSL validation installs it into the single disposable
+`.heap/cache/toolchains/lune/` slot, replacing the previous version in place;
+clearing `.heap` removes it. Rust, manpage, and dependency-input checks run
+directly and do not require Lune. This replaces compiling Lune separately in
+each workflow job and during local bootstrap.
+
 Distribution build manifests name the hosted runner and packaging inputs.
 They do not select a Lua interpreter; the hosted matrix and portable checks
 use the same pinned Lune runtime as local validation.

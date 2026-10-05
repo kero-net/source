@@ -1,0 +1,19 @@
+name: Set up pinned Lune
+description: Install the verified prebuilt Lune runtime for this runner.
+runs:
+  using: composite
+  steps:
+    - name: Install Lune
+      shell: bash
+      env:
+        KERO_LUNE_OS: ${{ runner.os }}
+        KERO_LUNE_ARCH: ${{ runner.arch }}
+      run: |
+        action_path="$GITHUB_ACTION_PATH"
+        destination="$RUNNER_TEMP/kero-lune"
+        if [[ "$RUNNER_OS" == Windows ]]; then
+          action_path="$(cygpath -u "$GITHUB_ACTION_PATH")"
+          destination="$(cygpath -u "$RUNNER_TEMP")/kero-lune"
+        fi
+        bash "$action_path/../../../distribution/actions/install-lune.sh" "$destination"
+        echo "$RUNNER_TEMP/kero-lune" >> "$GITHUB_PATH"

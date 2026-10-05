@@ -34,6 +34,20 @@ assert(not io.open("distribution/scripts/build-target.luau", "rb"))
 assert(read("distribution/policy.toml"):match("%[verification%]"))
 assert(read("distribution/tools/linuxdeploy.toml"):match("sha256"))
 assert(read("distribution/tools/lune.toml"):match("0%.10%.5"))
+assert(read("distribution/tools/lune.toml"):match("linux_x86_64"))
+assert(read(".github/actions/setup-lune/action.yml"):match("install%-lune%.sh"))
+assert(read("distribution/actions/install-lune.sh"):match("sha256sum %-%-check"))
+
+for _, workflow in ipairs({ "ci", "release", "pages", "local-distribution" }) do
+  local content = read(".github/workflows/" .. workflow .. ".yml")
+  assert(not content:match("cargo install lune"), workflow .. " compiles Lune")
+  assert(content:match("%.github/actions/setup%-lune"), workflow .. " lacks pinned Lune setup")
+end
+assert(not action:match("cargo install lune"))
+local ci = read(".github/workflows/ci.yml")
+assert(ci:match("cargo fmt %-%-manifest%-path src/Cargo%.toml"))
+assert(ci:match("groff %-z %-mandoc src/man/kero%.1"))
+assert(ci:match("test %-f src/Cargo%.lock"))
 
 local local_distribution = read(".github/workflows/local-distribution.yml")
 assert(local_distribution:match("Local distribution portable checks"))
