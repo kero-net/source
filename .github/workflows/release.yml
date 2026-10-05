@@ -233,7 +233,7 @@ jobs:
           archive="$RUNNER_TEMP/${{ matrix.llvm_mingw_archive }}"
           root="$RUNNER_TEMP/llvm-mingw-${{ matrix.llvm_mingw_version }}-ucrt-x86_64"
           curl --fail --location --retry 3 \
-            "https://github.com/mstorsjo/llvm-mingw/releases/download/${{ matrix.llvm_mingw_version }}/${{ matrix.llvm_mingw_archive }}" \
+            "${{ matrix.llvm_mingw_base_url }}/${{ matrix.llvm_mingw_archive }}" \
             --output "$archive"
           echo "${{ matrix.llvm_mingw_sha256 }}  $archive" | sha256sum --check
           rm -rf "$root"
