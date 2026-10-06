@@ -229,9 +229,11 @@ jobs:
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
         with:
           arch: ${{ matrix.msvc_arch }}
-      - name: Set up disposable Python for ARM64 Qt extraction
+      - name: Set up x64 disposable Python for ARM64 Qt extraction
         if: matrix.target == 'windows-arm64'
         shell: powershell
+        env:
+          KERO_WINDOWS_PYTHON_ARCH: windows-x64
         run: '& "$PWD/distribution/actions/install-python-windows.ps1"'
       - name: Install Qt
         uses: jurplel/install-qt-action@3c4505ac6c534648cc14edb23c1eacf9c412498f # v4.2.0
