@@ -94,11 +94,13 @@ git -C "$snapshot" -c user.name='KERO local validation' \
   -c user.email='validation@localhost' commit -qm 'Validate current source snapshot'
 source_sha="$(git -C "$snapshot" rev-parse HEAD)"
 tree_sha="$(git -C "$snapshot" rev-parse HEAD^{tree})"
+source_fingerprint="$(cd "$root" && git ls-files --cached --others --exclude-standard -z | xargs -0 -r sha256sum | sha256sum | cut -d ' ' -f 1)"
 
 {
   printf 'source-head=%s\n' "$(git -C "$root" rev-parse HEAD)"
   printf 'snapshot-head=%s\n' "$source_sha"
   printf 'snapshot-tree=%s\n' "$tree_sha"
+  printf 'source-fingerprint=%s\n' "$source_fingerprint"
   printf 'act=%s\n' "$("$act" --version)"
   printf 'docker=%s\n' "$(docker version --format '{{.Server.Version}}')"
   printf 'runner-platform=%s\n' "$platform"
@@ -127,6 +129,7 @@ fi
 cat > "$logs/workflow-replay.ok" <<EOF
 snapshot-head=$source_sha
 snapshot-tree=$tree_sha
+source-fingerprint=$source_fingerprint
 runner-platform=$platform
 runner-image=$actual_image
 scope=ci-orchestration
