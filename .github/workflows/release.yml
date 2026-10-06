@@ -7,6 +7,16 @@ on:
         description: Validated source commit to publish.
         required: true
         type: string
+      package-target:
+        description: Optional single package target for repair validation.
+        required: false
+        type: string
+        default: ''
+      publish:
+        description: Whether to build publication channels and publish after packaging.
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -39,7 +49,7 @@ jobs:
   build-publications:
     name: Build ${{ matrix.channel }} publication
     needs: resolve-publication
-    if: needs.resolve-publication.outputs.enabled == 'true'
+    if: needs.resolve-publication.outputs.enabled == 'true' && inputs.publish
     strategy:
       matrix:
         channel: [canary, beta, stable]
@@ -70,7 +80,7 @@ jobs:
   validate-release-key:
     name: Validate Optional Release Key
     needs: resolve-publication
-    if: needs.resolve-publication.outputs.enabled == 'true'
+    if: needs.resolve-publication.outputs.enabled == 'true' && inputs.publish
     runs-on: ubuntu-latest
     environment: release
     outputs:
@@ -142,9 +152,15 @@ jobs:
           KERO_PR_AUTHORS: ${{ steps.pr-context.outputs.authors }}
         run: lune run .github/scripts/self-hosted-runner.luau
       - id: plan
+        env:
+          KERO_PACKAGE_TARGET: ${{ inputs.package-target }}
         run: |
           set -o pipefail
           matrix="$(lune run .github/scripts/distribution-matrix.luau | tail -n 1)"
+          if [ -n "$KERO_PACKAGE_TARGET" ]; then
+            matrix="$(jq -c --arg target "$KERO_PACKAGE_TARGET" '{include: [.include[] | select(.target == $target)]}' <<<"$matrix")"
+            test "$(jq '.include | length' <<<"$matrix")" -eq 1
+          fi
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
   build-wasm:
@@ -178,7 +194,7 @@ jobs:
   build-release-packages:
     name: Build package (${{ matrix.target }})
     needs: [resolve-publication, validate-release-key, package-plan, build-wasm]
-    if: needs.resolve-publication.outputs.enabled == 'true'
+    if: always() && needs.resolve-publication.outputs.enabled == 'true' && needs.package-plan.result == 'success' && needs.build-wasm.result == 'success' && (!inputs.publish || needs.validate-release-key.result == 'success')
     environment: release
     strategy:
       fail-fast: false
@@ -345,7 +361,7 @@ jobs:
   publish:
     name: Publish ${{ matrix.channel }}
     needs: [resolve-publication, validate-release-key, build-publications, build-release-packages]
-    if: needs.resolve-publication.outputs.enabled == 'true'
+    if: needs.resolve-publication.outputs.enabled == 'true' && inputs.publish
     strategy:
       max-parallel: 1
       matrix:
