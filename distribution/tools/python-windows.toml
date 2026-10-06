@@ -1,0 +1,14 @@
+[tool]
+name = "python-windows"
+version = "3.12.10"
+purpose = "Disposable Python runtime for Windows-hosted packaging helpers"
+
+[windows-arm64]
+archive = "python-3.12.10-arm64.zip"
+url = "https://www.python.org/ftp/python/3.12.10/python-3.12.10-arm64.zip"
+sha256 = "20a5b1a707d899ffdfc5e3086d7372f7cc95eeea344d48ae256047cb7075cf63"
+
+[windows-x64]
+archive = "python-3.12.10-amd64.zip"
+url = "https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.zip"
+sha256 = "8649692de846c56a7189d6dae5c322ab20deb1b5908b6f39426b62a36f39415d"
