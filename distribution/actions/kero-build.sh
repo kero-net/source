@@ -51,6 +51,16 @@ if [ "$(uname -s)" = Linux ]; then
   fi
 fi
 source_fingerprint=$(git ls-files --cached --others --exclude-standard -z | xargs -0 -r sha256sum 2>/dev/null | sha256sum | cut -d ' ' -f 1)
+replay_marker="$heap/cache/logs/workflow-replay.ok"
+if [ "${KERO_WORKFLOW_REPLAY:-0}" != 1 ] || [ ! -f "$replay_marker" ]; then
+  echo 'KERO local builds require the GitHub workflow replay. Run Kero: Validate Locally.' >&2
+  exit 1
+fi
+replay_fingerprint=$(sed -n 's/^source-fingerprint=//p' "$replay_marker" | tail -n 1)
+if [ -z "$replay_fingerprint" ] || [ "$replay_fingerprint" != "$source_fingerprint" ]; then
+  echo 'Source changed after GitHub workflow replay. Run Kero: Validate Locally again.' >&2
+  exit 1
+fi
 resume=0
 if [ "${KERO_CLEAN:-0}" = 1 ]; then
   rm -rf -- "$heap"
