@@ -263,3 +263,23 @@ Do not add local-only replicas of inline GitHub package logic. Substantial
 package behavior belongs in source-owned modules or scripts consumed by both
 entry points. If a workflow needs behavior that cannot be called locally, move
 that behavior behind a source-owned boundary before extending the local gate.
+
+
+## CI workflow consolidation and repair loop
+
+GitHub exposes one top-level `CI` workflow for repository automation. Pull
+request labeling, first-interaction messages, Pages deployment, scheduled stale
+processing, CodeQL dispatches, portable distribution checks, ordinary CI, and
+publication entry all live behind that workflow's event or manual-task gates.
+The reusable `release.yml` workflow has no independent trigger and exists only
+as an implementation boundary invoked by CI, so publication still appears as
+part of the CI run rather than as a competing top-level workflow.
+
+For publication debugging, dispatch `CI` with task `package` and select one
+target. That repair task executes the same reusable publication package path but
+filters the package matrix to exactly one target and disables channel
+publication. An optional source SHA can pin the repair attempt to a specific
+commit. This is the fast continuation path after a package failure: fix the
+cause, validate only the failed target, then let the normal source push perform
+the complete gated publication. It does not reuse artifacts across changed
+source revisions or bypass the final full publication gate.
