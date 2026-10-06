@@ -132,13 +132,16 @@ native compiler and packaging paths remain under the repository `.heap/`
 because those tools need Windows-visible paths.
 
 On Windows, VS Code launches `distribution/actions/validate-locally.ps1`. It
-uses the pinned `act` release to execute Linux CI and publication package jobs
-from a disposable source snapshot, then invokes `kero-build.ps1` for native
-source checks and four-target package assembly. Missing workflow prerequisites
-or failed jobs stop validation. `act` carries no signing credentials and cannot
-represent native Windows or macOS runtime evidence. On WSL, the runner can expose an
-installed Windows Pandoc through a disposable `.heap/cache/build/bin/pandoc` shim
-for Pages generation. If WSL's resolver fails but HTTPS works,
+uses the pinned `act` release to replay GitHub CI orchestration from a
+disposable source snapshot, then invokes `kero-build.ps1` exactly once for the
+four distribution packages. Package jobs are not duplicated inside `act`.
+The workflow replay records the source fingerprint and the package build refuses
+to start if the source changes afterward. Missing workflow prerequisites,
+failed CI jobs, failed package providers, or mismatched artifacts stop
+validation. `act` carries no signing credentials and cannot represent native
+Windows or macOS runtime evidence. On WSL, the runner can expose an installed
+Windows Pandoc through a disposable `.heap/cache/build/bin/pandoc` shim for
+Pages generation. If WSL's resolver fails but HTTPS works,
 `KERO_CURL_DOH=1` enables DNS over HTTPS for pinned `curl` downloads without
 changing expected checksums.
 
@@ -235,3 +238,28 @@ components with rustup, placing its download under runner temporary storage.
 All package jobs pass the downloaded shared WASM core by an absolute workspace
 path. Windows package configuration copies the generated icon into the CMake
 build directory and puts that directory on the resource compiler include path.
+
+
+## Validation parity boundary
+
+GitHub workflow YAML is authoritative for orchestration, permissions,
+conditions, and release-only side effects. Source-owned distribution modules
+are authoritative for package mechanics. Local validation must execute those
+same package modules rather than maintain a second translation of the workflow.
+
+The local gate therefore has two non-overlapping phases:
+
+1. replay CI orchestration with `act` against an immutable source snapshot;
+2. execute the real target providers once and verify the four release-shaped
+   artifacts.
+
+Signing, publication tokens, repository mutation, and release-channel writes
+exist only in GitHub. A local pass does not claim byte-for-byte equivalence with
+a different GitHub runner image or native runtime evidence for an unavailable
+host. It does prove that the checked source passed the workflow gate and the
+same source-owned package implementation before a publication run is attempted.
+
+Do not add local-only replicas of inline GitHub package logic. Substantial
+package behavior belongs in source-owned modules or scripts consumed by both
+entry points. If a workflow needs behavior that cannot be called locally, move
+that behavior behind a source-owned boundary before extending the local gate.
