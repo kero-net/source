@@ -81,8 +81,8 @@ local function writeIndexes(publisher: Publisher)
 		end
 	end
 
-	Runtime.AtomicWrite(publisher.root .. "/.heap/artifacts/SHA256SUMS", table.concat(checksums, "\n") .. (if #checksums > 0 then "\n" else ""))
-	Runtime.AtomicWrite(publisher.root .. "/.heap/RELEASE.md", table.concat(lines, "\n") .. "\n")
+	Runtime.AtomicWrite(publisher.root .. "/.heap/release/artifacts/SHA256SUMS", table.concat(checksums, "\n") .. (if #checksums > 0 then "\n" else ""))
+	Runtime.AtomicWrite(publisher.root .. "/.heap/release/RELEASE-MESSAGE.md", table.concat(lines, "\n") .. "\n")
 end
 
 --# Functions
@@ -97,7 +97,7 @@ function Publication.Create(root: string, targets: { Settings.Target }, resume: 
 	for _, target in targets do
 		states[target.name] = "pending"
 	end
-	local index = root .. "/.heap/artifacts/SHA256SUMS"
+	local index = root .. "/.heap/release/artifacts/SHA256SUMS"
 	if resume and Runtime.IsFile(index) then
 		local recorded: { [string]: string } = {}
 		for line in Runtime.ReadFile(index):gmatch("[^\r\n]+") do
@@ -106,7 +106,7 @@ function Publication.Create(root: string, targets: { Settings.Target }, resume: 
 		end
 		for _, target in targets do
 			local expected = recorded[target.finalArtifact]
-			local artifact = root .. "/.heap/artifacts/distributions/" .. target.finalArtifact
+			local artifact = root .. "/.heap/release/artifacts/distributions/" .. target.finalArtifact
 			if expected and #expected == 64 and Runtime.IsFile(artifact) then
 				local output = Runtime.Capture(root, "sha256sum " .. Runtime.Quote(artifact))
 				local actual = if output then output:match("^([0-9a-fA-F]+)") else nil
@@ -118,8 +118,9 @@ function Publication.Create(root: string, targets: { Settings.Target }, resume: 
 		end
 	end
 
-	Runtime.WriteDirectory(root .. "/.heap/artifacts")
-	Runtime.WriteDirectory(root .. "/.heap/artifacts/distributions")
+	Runtime.WriteDirectory(root .. "/.heap/release")
+	Runtime.WriteDirectory(root .. "/.heap/release/artifacts")
+	Runtime.WriteDirectory(root .. "/.heap/release/artifacts/distributions")
 	local publisher: Publisher = {
 		root = root,
 		revision = revision,
@@ -143,8 +144,8 @@ function Publication.SetState(publisher: Publisher, target: string, state: State
 end
 
 function Publication.Publish(publisher: Publisher, target: Settings.Target)
-	local source = publisher.root .. "/.heap/build/releases/" .. target.name .. "/" .. target.artifact
-	local destination = publisher.root .. "/.heap/artifacts/distributions/" .. target.finalArtifact
+	local source = publisher.root .. "/.heap/cache/build/releases/" .. target.name .. "/" .. target.artifact
+	local destination = publisher.root .. "/.heap/release/artifacts/distributions/" .. target.finalArtifact
 	local temporary = destination .. ".partial"
 	Runtime.Copy(source, temporary)
 	Runtime.Move(temporary, destination)

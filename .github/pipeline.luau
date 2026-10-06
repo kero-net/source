@@ -24,10 +24,10 @@ local checks = {
 }
 
 local projections = {
-  lune .. " repo/build.luau canary .heap/build/repo/canary",
-  lune .. " repo/build.luau beta .heap/build/repo/beta",
-  lune .. " repo/build.luau stable .heap/build/repo/stable",
-  lune .. " pages/build.luau .heap/build/pages",
+  lune .. " repo/build.luau canary .heap/repo/canary",
+  lune .. " repo/build.luau beta .heap/repo/beta",
+  lune .. " repo/build.luau stable .heap/repo/stable",
+  lune .. " pages/build.luau .heap/pages",
 }
 
 local clean_heap = "cmake -E rm -rf .heap && cmake -E make_directory .heap"

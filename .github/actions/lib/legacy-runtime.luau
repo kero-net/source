@@ -73,6 +73,6 @@ runtime.os = {
     if from == to then return fs.isFile(from) or fs.isDir(from) end
     fs.move(from, to, true); return true
   end,
-  tmpname = function() return ".heap/build/tmp-" .. tostring(math.random(100000000, 999999999)) end,
+  tmpname = function() return ".heap/cache/build/tmp-" .. tostring(math.random(100000000, 999999999)) end,
 }
 return runtime

@@ -7,7 +7,7 @@ runs:
       shell: bash
       env:
         KERO_LUNE_OS: ${{ runner.os }}
-        KERO_LUNE_ARCH: ${{ runner.arch }}
+        KERO_LUNE_ARCH: ${{ runner.os == 'Windows' && runner.arch || '' }}
       run: |
         action_path="$GITHUB_ACTION_PATH"
         destination="$RUNNER_TEMP/kero-lune"

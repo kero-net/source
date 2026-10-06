@@ -9,8 +9,8 @@ local filesystem = require("../.github/actions/lib/filesystem")
 local renderer = require("../i18n/render")
 local pages = require("./render")
 
-local destination = arg[1] or ".heap/build/pages/site"
-local staging = arg[2] or ".heap/build/pages/markdown"
+local destination = arg[1] or ".heap/pages"
+local staging = arg[2] or ".heap/cache/build/pages/markdown"
 
 local ok, message = pages.render(root, staging)
 if not ok then io.stderr:write(message .. "\n"); os.exit(1) end

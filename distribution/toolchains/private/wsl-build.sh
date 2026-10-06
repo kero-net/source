@@ -77,8 +77,8 @@ KERO_WASM="$wasm" KERO_HOST="$host" KERO_DEPLOY_TOOL="$KERO_LINUXDEPLOY" cmake -
 cmake --build "$build" --target kero-package
 cmake --build "$build" --target kero-linux-appimage
 cmake -E sha256sum "$release/kero.AppImage" > "$release/kero.AppImage.sha256"
-mkdir -p "$workspace/.heap/build/releases/$target"
-cp -f "$release/kero.AppImage" "$release/kero.AppImage.sha256" "$workspace/.heap/build/releases/$target/"
+mkdir -p "$workspace/.heap/cache/build/releases/$target"
+cp -f "$release/kero.AppImage" "$release/kero.AppImage.sha256" "$workspace/.heap/cache/build/releases/$target/"
 
 if [[ ${KERO_SIGN_RELEASE:-0} == 1 ]]; then
   : "${KERO_GPG_KEY_ID:?KERO_GPG_KEY_ID is required when signing}"
