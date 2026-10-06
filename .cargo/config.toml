@@ -1,2 +1,2 @@
 [build]
-target-dir = ".heap/build/cargo/default"
+target-dir = ".heap/cache/build/cargo/default"

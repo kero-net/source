@@ -22,7 +22,7 @@ local function peMachine(path: string): number
 end
 
 local function artifactPath(root: string, target: string): string
-	local release = root .. "/.heap/build/releases/" .. target
+	local release = root .. "/.heap/cache/build/releases/" .. target
 	if target:match("^windows") then
 		return release .. "/kero-installer.exe"
 	end
@@ -45,7 +45,7 @@ function Artifact.Verify(root: string, target: string, runtime: boolean)
 		local expected = if target == "windows-arm64" then 0xAA64 else 0x8664
 		assert(peMachine(artifact) == expected, artifact .. " has the wrong machine type")
 
-		local stage = root .. "/.heap/build/qt/" .. target .. "/stage"
+		local stage = root .. "/.heap/cache/build/qt/" .. target .. "/stage"
 		local listing, message = Runtime.Capture(root, "find " .. Runtime.Quote(stage) .. " -type f -iname '*.dll' -print")
 		assert(listing, "cannot list staged DLLs: " .. tostring(message))
 

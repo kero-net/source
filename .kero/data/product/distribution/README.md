@@ -40,11 +40,11 @@ completed artifacts across a source-fingerprint change; a product source
 change always requires rebuilding them.
 
 Completed distribution artifacts are assembled together beneath
-`.heap/artifacts/distributions/`. `.heap/artifacts/SHA256SUMS` covers that set;
-GitHub adds `.heap/artifacts/SHA256SUMS.asc` using protected secrets, while
-local builds remain unsigned. `.heap/RELEASE.md` is the generated release
+`.heap/release/artifacts/distributions/`. `.heap/release/artifacts/SHA256SUMS` covers that set;
+GitHub adds `.heap/release/artifacts/SHA256SUMS.asc` using protected secrets, while
+local builds remain unsigned. `.heap/release/RELEASE-MESSAGE.md` is the generated release
 description. Intermediate Rust, Cargo, Qt, and downloaded toolchain data belongs
-under `.heap/build/`, separate from completed artifacts.
+under `.heap/cache/build/`, separate from completed artifacts.
 
 macOS remains future work until its final target and native evidence contract
 are selected.

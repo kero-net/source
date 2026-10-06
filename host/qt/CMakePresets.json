@@ -5,10 +5,10 @@
       "name": "base",
       "hidden": true,
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/../../.heap/build/qt/${presetName}",
+      "binaryDir": "${sourceDir}/../../.heap/cache/build/qt/${presetName}",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "KERO_RELEASE_DIRECTORY": "${sourceDir}/../../.heap/build/releases/${presetName}"
+        "KERO_RELEASE_DIRECTORY": "${sourceDir}/../../.heap/cache/build/releases/${presetName}"
       }
     },
     {

@@ -260,7 +260,7 @@ function Display.Preview()
     stdio.write(statusLine("Skipped", "pages: pandoc is unavailable") .. "\n")
     stdio.write(statusLine("Warning", "optional prerequisite is missing") .. "\n")
     stdio.write(statusLine("Failed", "linux-x86_64: command exited with code 1") .. "\n")
-    stdio.write(statusLine("Error", "see .heap/logs/validate-locally.log") .. "\n")
+    stdio.write(statusLine("Error", "see .heap/cache/logs/validate-locally.log") .. "\n")
     stdio.write("\n" .. paint("Legend:", colors.blue) .. " 0 = progress; 4 = runner actions; 8 = scopes, commands, and child output.\n")
     stdio.write("        :: scope    + command run    - omitted optional work\n")
 end

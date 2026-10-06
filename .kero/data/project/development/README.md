@@ -5,11 +5,12 @@ may change as tooling changes without redefining KERO product semantics.
 
 ## Current local distribution entry point
 
-VS Code exposes one task: **Kero: Validate Locally**. It calls the matching
-`distribution/actions/kero-build` shell adapter, accepts no target or stage,
-and builds every enabled distribution from one validated plan.
+VS Code exposes one task: **Kero: Validate Locally**. It first runs the
+credential-free Linux GitHub workflow jobs through `act` from an isolated
+snapshot of the current source tree, then builds every enabled distribution
+through the source-owned native runner. No target or stage is skipped.
 
-`act` is an optional portable/Linux-container check. It never represents a
+`act` is required for Linux workflow validation. It does not represent a
 Windows or macOS virtual-machine test. Native desktop testing runs on the
 matching local host or supported emulation. Canonical
 target, toolchain, evidence, and release rules live under
@@ -26,10 +27,10 @@ interface refinement, and cross-platform proof.
 
 ## Replacement record
 
-This document replaces the prior remote-CI parity description. Normal package
-creation is local and unsigned by default; remote source review does not build
-or sign contributor artifacts. The separate build/test evidence contract avoids
-mistaking a cross-build or emulated run for native release proof.
+This document replaces the optional `act` decision: local validation now runs
+the Linux GitHub workflow jobs before native package assembly. Normal package
+creation is local and unsigned by default. A Linux container or cross-build
+still cannot count as native Windows or macOS runtime evidence.
 
 Source-review CI validates repository contracts, Rust, automation, documentation,
 localization, and generated Pages/repository inputs. It does not build platform
