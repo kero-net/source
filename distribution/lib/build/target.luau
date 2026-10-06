@@ -194,7 +194,7 @@ function Target.Prepare(root: string, name: string, configuration: Settings.Conf
 		local cacheRoot = Runtime.Environment("KERO_WSL_WORK_ROOT") or (root .. "/.heap")
 		local packages = cacheRoot .. "/cache/toolchains/python/aqtinstall-" .. activeConfiguration.tools.aqtinstall .. "-" .. abi
 		local archives = dependencies .. "/qt/" .. targetName
-		local logs = root .. "/.heap/logs/" .. targetName
+		local logs = root .. "/.heap/cache/logs/" .. targetName
 		assert(Runtime.IsDirectory(packages .. "/aqt"), "shared aqtinstall host tool was not prepared")
 		run("mkdir -p " .. Runtime.Quote(archives) .. " " .. Runtime.Quote(logs))
 		local invocation = "cd " .. Runtime.Quote(logs)

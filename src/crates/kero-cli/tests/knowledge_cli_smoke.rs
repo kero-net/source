@@ -132,7 +132,7 @@ fn build_wasm_core(workspace: &Path) -> PathBuf {
             workspace
                 .parent()
                 .unwrap()
-                .join(".heap/build/cargo/default")
+                .join(".heap/cache/build/cargo/default")
         });
     let target_dir = if target_dir.is_absolute() {
         target_dir

@@ -14,6 +14,6 @@ local root = process.cwd:gsub("\\", "/")
 local succeeded, failure = pcall(Complete.Run, root)
 if not succeeded then
 	Runtime.Log("[fatal] " .. tostring(failure))
-	Runtime.Finish("[error] Local validation is incomplete; successful artifacts were preserved. See .heap/RELEASE.md and .heap/logs/validate-locally.log.")
+	Runtime.Finish("[error] Local validation is incomplete; successful artifacts were preserved. See .heap/release/RELEASE-MESSAGE.md and .heap/cache/logs/validate-locally.log.")
 	process.exit(1)
 end

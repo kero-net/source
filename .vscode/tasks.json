@@ -4,7 +4,7 @@
         {
             "label": "Kero: Validate Locally",
             "type": "process",
-            "command": "${workspaceFolder}/distribution/actions/kero-build.sh",
+            "command": "${workspaceFolder}/distribution/actions/validate-locally.sh",
             "args": [],
             "windows": {
                 "command": "powershell.exe",
@@ -13,7 +13,7 @@
                     "-ExecutionPolicy",
                     "Bypass",
                     "-File",
-                    "${workspaceFolder}/distribution/actions/kero-build.ps1"
+                    "${workspaceFolder}/distribution/actions/validate-locally.ps1"
                 ]
             },
             "presentation": {

@@ -4,10 +4,10 @@ This directory owns desktop-package facts and mechanics: target definitions,
 toolchain requirements, package assembly, checksums, detached signatures, and
 artifact verification. It does not select repository channels or publish.
 
-`actions/kero-build.sh` is the only executable distribution entry point. It
-accepts no target or stage: it builds every enabled distribution, or fails.
-On Windows, VS Code launches this same file directly through a profile-free
-WSL Bash process. VS Code exposes exactly that command as `Kero: Validate
+`actions/kero-build.sh` is the distribution build entry point. It accepts no
+target or stage: it builds every enabled distribution, or fails. On Windows,
+`actions/kero-build.ps1` performs native source checks before handing the build
+to a profile-free WSL Bash process. VS Code exposes this as `Kero: Validate
 Locally`.
 
 `builds/*/build.toml` defines one distribution per directory. `tools/*.toml`
@@ -39,23 +39,23 @@ The full build produces one clear disposable tree:
 
 ```text
 .heap/
-├── build/                         expanded tools and compiler intermediates
+├── cache/                         downloads, tools, logs, and compiler state
+├── pages/                         generated Pages site
 ├── repo/{stable,beta,canary}/     generated repository channels
-├── pages/                         generated pages
-├── logs/                          complete run and target-scoped logs
-├── artifacts/
-│   ├── dependencies/              verified downloaded build inputs
-│   ├── SHA256SUMS
-│   ├── SHA256SUMS.asc             GitHub only; absent from unsigned local builds
-│   └── distributions/
-│       ├── windows-x86_64.exe
-│       ├── windows-aarch64.exe
-│       ├── linux-x86_64.AppImage
-│       └── linux-aarch64.AppImage
-└── RELEASE.md
+├── packages/                      reserved for repository packages
+└── release/
+    ├── RELEASE-MESSAGE.md
+    └── artifacts/
+        ├── SHA256SUMS
+        ├── SHA256SUMS.asc          GitHub only; absent locally
+        └── distributions/
+            ├── windows-x86_64.exe
+            ├── windows-aarch64.exe
+            ├── linux-x86_64.AppImage
+            └── linux-aarch64.AppImage
 ```
 
-Completed release-shaped files belong only in `artifacts/`; build directories
+Completed release-shaped files belong only in `release/artifacts/`; build directories
 must not double as the artifact interface. The local build matches GitHub's
 shape but never signs. GitHub uses protected secrets to add the aggregate
 checksum signature.
@@ -68,17 +68,20 @@ independent target inputs concurrently, and serializes package builds as soon
 as each target becomes ready. Each verified package is published immediately;
 it does not wait for unrelated targets.
 It reports the declared top-level actions as `Building [...] n/N` and writes
-the same command/result evidence to `.heap/logs/validate-locally.log`. Target
-specific acquisition records live below `.heap/logs/<target>/`.
+the same command/result evidence to `.heap/cache/logs/validate-locally.log`. Target
+specific acquisition records live below `.heap/cache/logs/<target>/`.
 Downloaded dependency archives and keyed toolchains are retained under `.heap/cache/`;
-Cargo output and package staging are working state under `.heap/build/` and
+Cargo output and package staging are working state under `.heap/cache/build/` and
 are removed after successful publication. Preparation
 is dependency-aware and concurrent; package compilation remains serialized.
 If a later target fails, earlier verified artifacts and their checksums remain,
-and `RELEASE.md` marks the run incomplete.
+and `release/RELEASE-MESSAGE.md` marks the run incomplete.
 
-`act` is optional Linux-container parity, enabled only with `KERO_RUN_ACT=1`.
-It contains no secret, token, or local state.
+The validation entry point bootstraps a pinned `act` release under `.heap/cache/`
+and runs the Linux CI and publication package jobs from an isolated source
+snapshot. It fails if those jobs, Docker, or native package creation fail.
+The replay carries no signing secret or publication token; its logs and
+resolved source and tool versions stay under `.heap/cache/logs/`.
 
 For a Windows ARM64 package, the wrapper requires the Qt `msvc2022_arm64` kit
 and the matching Visual Studio ARM64 target compiler. It refuses to use an x64

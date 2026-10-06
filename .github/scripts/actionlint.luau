@@ -19,7 +19,7 @@ local assets = {
   },
 }
 local asset = assets[machine]
-local tool_root = ".heap/tools/actionlint"
+local tool_root = ".heap/cache/tools/actionlint"
 local binary = tool_root .. "/actionlint"
 
 if is_windows then
