@@ -58,6 +58,9 @@ end
 local Package = {}
 
 function Package.Run(root: string, targetName: string)
+	if root == "." then
+		root = Runtime.CurrentDirectory()
+	end
 	local target = assert(Settings.Target(root, targetName), "unknown distribution target: " .. targetName)
 	assert(target.enabled, targetName .. " is " .. target.lifecycle)
 
@@ -77,13 +80,13 @@ function Package.Run(root: string, targetName: string)
 	local cmake = Runtime.Environment("KERO_CMAKE") or "cmake"
 	local rustToolchain = Runtime.Environment("KERO_RUST_TOOLCHAIN")
 	local toolchainOption = if rustToolchain and rustToolchain ~= "" then " --toolchain " .. rustToolchain else ""
-	local cargoTarget = ".heap/cache/build/cargo/" .. targetName
+	local cargoTarget = root .. "/.heap/cache/build/cargo/" .. targetName
 	local wasm = root .. "/.heap/cache/build/cargo/wasm/wasm32-wasip1/release/kero_core.wasm"
 	assert(Runtime.IsFile(wasm), "shared WASM core is missing: " .. wasm)
 	local hostExtension = if target.platform == "windows" then ".exe" else ""
 	local host = cargoTarget .. "/" .. target.rustTarget .. "/release/kero-host" .. hostExtension
-	local build = ".heap/cache/build/qt/" .. targetName
-	local release = ".heap/cache/build/releases/" .. targetName
+	local build = root .. "/.heap/cache/build/qt/" .. targetName
+	local release = root .. "/.heap/cache/build/releases/" .. targetName
 	local scope = targetName .. "-build"
 
 	local cargoEnvironment = "CARGO_TARGET_DIR=" .. Runtime.Quote(cargoTarget) .. " "
@@ -106,7 +109,7 @@ function Package.Run(root: string, targetName: string)
 		local icon = writeWindowsIcon(root, targetName)
 		local environment = "KERO_ICON=" .. Runtime.Quote(windowsPath(icon))
 			.. " KERO_WASM=" .. Runtime.Quote(windowsPath(wasm))
-			.. " KERO_HOST=" .. Runtime.Quote(windowsPath(root .. "/" .. host))
+			.. " KERO_HOST=" .. Runtime.Quote(windowsPath(host))
 		if deployTool ~= "" then
 			environment ..= " KERO_DEPLOY_TOOL=" .. Runtime.Quote(windowsPath(deployTool))
 		elseif targetName ~= "windows-arm64" then
