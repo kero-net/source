@@ -78,10 +78,21 @@ If a later target fails, earlier verified artifacts and their checksums remain,
 and `release/RELEASE-MESSAGE.md` marks the run incomplete.
 
 The validation entry point bootstraps a pinned `act` release under `.heap/cache/`
-and runs the Linux CI and publication package jobs from an isolated source
-snapshot. It fails if those jobs, Docker, or native package creation fail.
-The replay carries no signing secret or publication token; its logs and
-resolved source and tool versions stay under `.heap/cache/logs/`.
+and replays the GitHub CI orchestration from an isolated source snapshot. It
+does not rebuild distribution packages inside `act`: package creation runs
+exactly once through the source-owned distribution modules that GitHub package
+jobs also invoke. The replay records a source fingerprint, and the native build
+refuses to continue if the checkout changes between workflow replay and package
+creation. The replay carries no signing secret or publication token; its logs
+and resolved source and tool versions stay under `.heap/cache/logs/`.
+
+This deliberately treats GitHub as the workflow reference while avoiding a
+second CI implementation. `act` proves Linux-hosted workflow structure,
+conditions, actions, and artifact-oriented CI behavior on the contributor host
+architecture. Platform package providers remain responsible for the real
+Windows and Linux toolchains required by each target. Exact GitHub runner-image
+identity is not claimed when the contributor machine has a different
+architecture; target semantics and package commands remain shared source.
 
 For a Windows ARM64 package, the wrapper requires the Qt `msvc2022_arm64` kit
 and the matching Visual Studio ARM64 target compiler. It refuses to use an x64
