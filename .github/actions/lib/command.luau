@@ -10,7 +10,7 @@ local shell = if is_windows then (process.env.KERO_POSIX_SHELL or "C:/Program Fi
 local function invoke(root, program, live)
   local line = "cd " .. command.quote(root) .. " && " .. program
   if program:match("^cargo ") then
-    line = "cd " .. command.quote(root) .. " && CARGO_TARGET_DIR=.heap/build/cargo/target " .. program
+    line = "cd " .. command.quote(root) .. " && CARGO_TARGET_DIR=.heap/cache/build/cargo/target " .. program
   end
   return process.exec(shell, { "-c", line }, if live then { stdio = "inherit" } else nil)
 end

@@ -15,10 +15,10 @@ and Luau support. `.heap/` is ignored within `source/` so disposable output
 follows the repository when it is opened directly. VS Code exposes one standard
 task, `Kero: Validate Locally`, which calls the source-owned runner.
 The source-owned `.cargo/config.toml` directs ordinary Cargo output to
-`.heap/build/cargo/default/`. Nested Cargo invocations set an explicit absolute
+`.heap/cache/build/cargo/default/`. Nested Cargo invocations set an explicit absolute
 `CARGO_TARGET_DIR`, so their working directory cannot create a nested heap.
 Distribution builds keep native Cargo outputs target-specific beneath
-`.heap/build/cargo/` and compile the shared WASM core once.
+`.heap/cache/build/cargo/` and compile the shared WASM core once.
 
 ## Direction
 
@@ -39,26 +39,28 @@ The canonical generated layout is:
 
 ```text
 .heap/
-├── build/                         Rust/Cargo and intermediate build output
+├── cache/                         downloads, tools, logs, and build output
 ├── repo/
 │   ├── stable/                    generated repository channel
 │   ├── beta/                      generated repository channel
 │   └── canary/                    generated repository channel
 ├── pages/                         generated documentation site
-├── artifacts/
-│   ├── SHA256SUMS                 checksums for the artifact set
-│   ├── SHA256SUMS.asc             GitHub-produced detached signature
-│   └── distributions/
-│       ├── windows-x86_64.exe
-│       ├── windows-aarch64.exe
-│       ├── linux-x86_64.AppImage
-│       └── linux-aarch64.AppImage
-└── RELEASE.md                     generated release Markdown
+├── packages/                      reserved for repository packages
+└── release/
+    ├── RELEASE-MESSAGE.md         generated release Markdown
+    └── artifacts/
+        ├── SHA256SUMS             checksums for the artifact set
+        ├── SHA256SUMS.asc         GitHub-produced detached signature
+        └── distributions/
+            ├── windows-x86_64.exe
+            ├── windows-aarch64.exe
+            ├── linux-x86_64.AppImage
+            └── linux-aarch64.AppImage
 ```
 
 Local builds leave `SHA256SUMS.asc` absent because signing belongs exclusively
 to GitHub secrets. GitHub creates the same shape and adds the signature. Build
-tool downloads and transient toolchain state may live beneath `.heap/build/`
+tool downloads and transient toolchain state may live beneath `.heap/cache/build/`
 during one run, but the run must bootstrap them again after the heap is deleted.
 Target-specific requirements remain canonical under
 [`product/distribution/`](../../product/distribution/).
@@ -73,9 +75,9 @@ one; it does not make that module a build dependency.
 
 The runner presents every declared top-level action as `Building [...] n/N` on
 one persistent terminal line and writes a complete command/result record to
-`.heap/logs/validate-locally.log` as it proceeds. The record therefore survives
+`.heap/cache/logs/validate-locally.log` as it proceeds. The record therefore survives
 a failed source check, tool acquisition, or package action. Qt's bundled file
-logger writes to `.heap/logs/<target>/aqtinstall.log` so independent target
+logger writes to `.heap/cache/logs/<target>/aqtinstall.log` so independent target
 preparation never races for one log file. Preparation follows its declared
 dependency graph concurrently: independent toolchains acquire together, while
 `linux-x64` waits for the ARM64 Qt host kit it explicitly consumes. Builds
@@ -113,36 +115,33 @@ live beneath `.heap/cache/toolchains/`, with a shared pip cache at
 ext4 cache described below. `aqtinstall` is installed once per version and
 host Python ABI.
 Cargo targets, CMake output, package staging, and release handoff files belong
-beneath `.heap/build/` and are removed after successful publication. The cache
+beneath `.heap/cache/build/` and are removed after successful publication. The cache
 can be discarded with `KERO_CLEAN=1`; its entries are keyed independently of
 KERO source changes.
 
-On WSL, the runner uses a workspace-keyed directory under
-`~/.cache/kero/workspaces/` on the Linux ext4 filesystem. Linux Qt kits and
+On WSL, the runner uses a disposable workspace-keyed directory under
+`${TMPDIR:-/tmp}/kero/workspaces/` on the Linux ext4 filesystem. Linux Qt kits and
 extracted toolchains live in its `cache/toolchains/`; Linux Cargo, CMake,
 staging, a source snapshot, and the shared WASM compiler output live in its
 `build/`. Source validation and Windows packages use the Windows checkout;
 Linux compilation reads the ext4 snapshot. Final WASM
-and Linux package files are copied into the repository `.heap/build/` for
-cross-host packaging and publication. Successful publication removes both
-build directories, while `KERO_CLEAN=1` also drops the ext4 cache. Windows
+and Linux package files are copied into the repository `.heap/cache/build/` for
+cross-host packaging and publication. Successful validation removes the ext4
+work directory; `KERO_CLEAN=1` drops retained state from a failed run. Windows
 native compiler and packaging paths remain under the repository `.heap/`
 because those tools need Windows-visible paths.
 
-On Windows, VS Code launches `distribution/actions/kero-build.ps1`. It runs
-source checks with the Windows Lune, Cargo, and Git Bash tools against the
-Windows checkout, then invokes the Bash distribution runner in WSL. Linux
-compilation reads its ext4 source snapshot. The Bash runner remains the
-portable entry point on Linux. It requires the pinned Lune Luau VM in WSL
-distribution and reports the exact installation command before work begins if
-it is absent. `act` runs the same portable Luau stage
-inside a Linux container when both it and Docker are installed. It carries no
-secrets or tokens and never substitutes for native desktop evidence. The optional
-container check uses an existing local image and reports unavailable parity as
-a warning after source-owned contracts pass. `KERO_RUN_ACT=1` explicitly
-enables it; ordinary validation skips it. On WSL, the runner can expose an
-installed Windows Pandoc through a disposable `.heap/build/bin/pandoc` shim
-for Pages generation. If WSL's resolver fails but HTTPS works,
+On Windows, VS Code launches `distribution/actions/validate-locally.ps1`. It
+uses the pinned `act` release to replay GitHub CI orchestration from a
+disposable source snapshot, then invokes `kero-build.ps1` exactly once for the
+four distribution packages. Package jobs are not duplicated inside `act`.
+The workflow replay records the source fingerprint and the package build refuses
+to start if the source changes afterward. Missing workflow prerequisites,
+failed CI jobs, failed package providers, or mismatched artifacts stop
+validation. `act` carries no signing credentials and cannot represent native
+Windows or macOS runtime evidence. On WSL, the runner can expose an installed
+Windows Pandoc through a disposable `.heap/cache/build/bin/pandoc` shim for
+Pages generation. If WSL's resolver fails but HTTPS works,
 `KERO_CURL_DOH=1` enables DNS over HTTPS for pinned `curl` downloads without
 changing expected checksums.
 
@@ -231,3 +230,36 @@ toolchain explicitly, and Linux package jobs use the manifest-selected
 linuxdeploy architecture and AppImage runtime. Target semantics remain owned by
 the distribution manifests; host-specific execution details must not redefine
 the target.
+
+The hosted Windows Rust setup runs a source-owned PowerShell bootstrap rather
+than invoking a Bash shell. This avoids resolving `bash.exe` to WSL on a native
+Windows ARM64 runner. The bootstrap installs pinned Rust, requested targets, and
+components with rustup, placing its download under runner temporary storage.
+All package jobs pass the downloaded shared WASM core by an absolute workspace
+path. Windows package configuration copies the generated icon into the CMake
+build directory and puts that directory on the resource compiler include path.
+
+
+## Validation parity boundary
+
+GitHub workflow YAML is authoritative for orchestration, permissions,
+conditions, and release-only side effects. Source-owned distribution modules
+are authoritative for package mechanics. Local validation must execute those
+same package modules rather than maintain a second translation of the workflow.
+
+The local gate therefore has two non-overlapping phases:
+
+1. replay CI orchestration with `act` against an immutable source snapshot;
+2. execute the real target providers once and verify the four release-shaped
+   artifacts.
+
+Signing, publication tokens, repository mutation, and release-channel writes
+exist only in GitHub. A local pass does not claim byte-for-byte equivalence with
+a different GitHub runner image or native runtime evidence for an unavailable
+host. It does prove that the checked source passed the workflow gate and the
+same source-owned package implementation before a publication run is attempted.
+
+Do not add local-only replicas of inline GitHub package logic. Substantial
+package behavior belongs in source-owned modules or scripts consumed by both
+entry points. If a workflow needs behavior that cannot be called locally, move
+that behavior behind a source-owned boundary before extending the local gate.

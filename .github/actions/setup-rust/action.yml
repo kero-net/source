@@ -13,8 +13,15 @@ runs:
   using: composite
   steps:
     - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@e081816240890017053eacbb1bdf337761dc5582 # 1.95.0
+      if: runner.os != 'Windows'
+      uses: dtolnay/rust-toolchain@eb0a44f258ec94ab9ee0f14f998f4cf332c25d3a # 1.95.0
       with:
-        toolchain: 1.95.0
         targets: ${{ inputs.targets }}
         components: ${{ inputs.components }}
+    - name: Install Rust toolchain on Windows
+      if: runner.os == 'Windows'
+      shell: powershell
+      env:
+        KERO_RUST_TARGETS: ${{ inputs.targets }}
+        KERO_RUST_COMPONENTS: ${{ inputs.components }}
+      run: '& "$env:GITHUB_ACTION_PATH/../../../distribution/actions/install-rust-windows.ps1"'

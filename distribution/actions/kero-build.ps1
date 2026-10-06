@@ -7,7 +7,7 @@ if ($env:KERO_CLEAN -eq '1') {
     }
     if (Test-Path -LiteralPath $heap) { Remove-Item -LiteralPath $heap -Recurse -Force }
 }
-$logs = Join-Path $workspace '.heap/logs'
+$logs = Join-Path $workspace '.heap/cache/logs'
 New-Item -ItemType Directory -Path $logs -Force | Out-Null
 $transcribing = $false
 Push-Location -LiteralPath $workspace

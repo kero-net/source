@@ -43,7 +43,7 @@ if not config.channels[channel] then
   os.exit(2)
 end
 
-local destination = arg[2] or (".heap/build/repo/" .. channel)
+local destination = arg[2] or (".heap/repo/" .. channel)
 local version = arg[3] or "unreleased"
 local source_commit = arg[4]
 if not source_commit or source_commit == "" then

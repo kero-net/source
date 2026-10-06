@@ -187,8 +187,8 @@ end
 function Runtime.Run(root: string, line: string, reportFailure: boolean?, scope: string?): (boolean, string)
 	local name = (scope or "controller"):gsub("[^%w%-_.]", "-")
 	Runtime.WriteDirectory(root .. "/.heap")
-	Runtime.WriteDirectory(root .. "/.heap/logs")
-	local stageLog = root .. "/.heap/logs/" .. name .. ".log"
+	Runtime.WriteDirectory(root .. "/.heap/cache/logs")
+	local stageLog = root .. "/.heap/cache/logs/" .. name .. ".log"
 	if not fs.isFile(stageLog) then
 		fs.writeFile(stageLog, "KERO stage log: " .. name .. "\n\n")
 	end
@@ -218,10 +218,10 @@ function Runtime.Run(root: string, line: string, reportFailure: boolean?, scope:
 		recordRunLog("[ok] exit 0")
 		return true, ""
 	end
-	local message = "command exited with code " .. tostring(result.code) .. "; see .heap/logs/" .. name .. ".log"
+	local message = "command exited with code " .. tostring(result.code) .. "; see .heap/cache/logs/" .. name .. ".log"
 	recordRunLog("[error] " .. message)
 	if reportFailure ~= false then
-		recordRunLog("[error] Command failed; see .heap/logs/validate-locally.log for its complete output.")
+		recordRunLog("[error] Command failed; see .heap/cache/logs/validate-locally.log for its complete output.")
 	end
 	return false, message
 end

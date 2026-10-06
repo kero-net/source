@@ -21,10 +21,10 @@ local function run(root: string, line: string, scope: string)
 end
 
 local function executeJob(name: string, log: string, total: number, callback: () -> ())
-	Runtime.Job(name, "run", "log: .heap/logs/" .. log .. ".log", total)
+	Runtime.Job(name, "run", "log: .heap/cache/logs/" .. log .. ".log", total)
 	local succeeded, failure = pcall(callback)
 	if not succeeded then
-		Runtime.Job(name, "fail", "log: .heap/logs/" .. log .. ".log")
+		Runtime.Job(name, "fail", "log: .heap/cache/logs/" .. log .. ".log")
 		error(tostring(failure), 0)
 	end
 	Runtime.Job(name, "done")
@@ -72,50 +72,9 @@ local function portableChecks(root: string)
 	Runtime.Step(job, "Checking", "distribution contracts")
 	Contracts.Verify(root)
 	Runtime.StepComplete(job)
-
-	if Runtime.Environment("KERO_RUN_ACT") ~= "1" then
-		for _, action in { "act availability", "Docker availability", "portable workflow" } do
-			Runtime.Step(job, "Skipping", action .. "; optional local parity disabled")
-			Runtime.StepComplete(job)
-		end
-		return
-	end
-
-	if Runtime.Environment("KERO_PORTABLE_WORKFLOW") == "1" then
-		Runtime.Step(job, "Checking", "act availability")
-		Runtime.StepComplete(job)
-		Runtime.Step(job, "Checking", "Docker availability")
-		Runtime.StepComplete(job)
-		Runtime.Step(job, "Checking", "portable workflow")
-		Runtime.StepComplete(job)
-		Runtime.Log("[ok] Portable workflow checks passed.")
-		return
-	end
-
-	Runtime.Step(job, "Checking", "act availability")
-	local hasAct = Runtime.Run(root, "act --version", false, "portable-workflow")
+	Runtime.Step(job, "Checking", "GitHub workflow replay completed")
+	assert(Runtime.Environment("KERO_WORKFLOW_REPLAY") == "1", "run Kero: Validate Locally to execute required GitHub workflows before building")
 	Runtime.StepComplete(job)
-
-	Runtime.Step(job, "Checking", "Docker availability")
-	local hasDocker = Runtime.Run(root, "docker info >/dev/null 2>&1", false, "portable-workflow")
-	Runtime.StepComplete(job)
-
-	local hasImage = false
-	if hasAct and hasDocker then
-		hasImage = Runtime.Run(root, "docker image inspect catthehacker/ubuntu:act-latest >/dev/null 2>&1", false, "portable-workflow")
-	end
-	if hasAct and hasDocker and hasImage then
-		Runtime.Step(job, "Running", "portable workflow")
-		local passed, message = Runtime.Run(root, "act --pull=false --action-offline-mode workflow_dispatch -W .github/workflows/local-distribution.yml -j portable", false, "portable-workflow")
-		Runtime.StepComplete(job)
-		if not passed then
-			Runtime.Status("Warning", "optional act parity check could not complete: " .. message)
-		end
-	else
-		Runtime.Step(job, "Skipping", "portable workflow; act, Docker, or the local runner image is unavailable")
-		Runtime.StepComplete(job)
-		Runtime.Log("[skip] act, Docker, or the local runner image is unavailable; portable contracts passed.")
-	end
 end
 
 local function writeDependencyRecord(root: string)
@@ -153,9 +112,9 @@ end
 local function discardWorkingState(root: string)
 	local job = "working-state cleanup"
 	Runtime.Step(job, "Removing", "disposable compiler, CMake, and staging output")
-	Runtime.RemoveDirectory(root .. "/.heap/build")
+	Runtime.RemoveDirectory(root .. "/.heap/cache/build")
 	local wslRoot = Runtime.Environment("KERO_WSL_WORK_ROOT")
-	if wslRoot then Runtime.RemoveDirectory(wslRoot .. "/build") end
+	if wslRoot then Runtime.RemoveDirectory(wslRoot) end
 	Runtime.StepComplete(job)
 	Runtime.Log("[ok] Removed disposable build state; keyed dependency caches remain.")
 end
@@ -178,7 +137,7 @@ local function executeTargets(
 
 	local function beginPreparation(target: Settings.Target)
 		Publication.SetState(publisher, target.name, "preparing")
-		Runtime.Job("prepare " .. target.name, "run", "log: .heap/logs/" .. target.name .. "-prepare.log", Target.PreparationSteps(target, configuration))
+		Runtime.Job("prepare " .. target.name, "run", "log: .heap/cache/logs/" .. target.name .. "-prepare.log", Target.PreparationSteps(target, configuration))
 		preparing += 1
 		Task.spawn(function()
 			local succeeded, value = pcall(Target.Prepare, root, target.name, configuration)
@@ -196,7 +155,7 @@ local function executeTargets(
 			local result = assert(table.remove(results, 1))
 			if result.error then
 				Publication.SetState(publisher, result.target.name, "failed", result.error)
-				Runtime.Job("prepare " .. result.target.name, "fail", "log: .heap/logs/" .. result.target.name .. "-prepare.log")
+				Runtime.Job("prepare " .. result.target.name, "fail", "log: .heap/cache/logs/" .. result.target.name .. "-prepare.log")
 				Runtime.Job("build and publish " .. result.target.name, "skip", "preparation failed")
 				terminalStates += 1
 			else
@@ -236,7 +195,7 @@ local function executeTargets(
 			local target = buildTarget
 			Publication.SetState(publisher, target.name, "building")
 			local buildSteps = if target.builder.kind == "wsl-linux" then 3 else 11
-			Runtime.Job("build and publish " .. target.name, "run", "log: .heap/logs/" .. target.name .. "-build.log", buildSteps)
+			Runtime.Job("build and publish " .. target.name, "run", "log: .heap/cache/logs/" .. target.name .. "-build.log", buildSteps)
 			local succeeded, message = pcall(function()
 				local job = "build and publish " .. target.name
 				if target.builder.kind == "wsl-linux" then
@@ -263,7 +222,7 @@ local function executeTargets(
 			end)
 			if not succeeded then
 				Publication.SetState(publisher, target.name, "failed", tostring(message))
-				Runtime.Job("build and publish " .. target.name, "fail", "log: .heap/logs/" .. target.name .. "-build.log")
+				Runtime.Job("build and publish " .. target.name, "fail", "log: .heap/cache/logs/" .. target.name .. "-build.log")
 			else
 				Runtime.Job("build and publish " .. target.name, "done", "published")
 			end
@@ -289,8 +248,8 @@ local Complete = {}
 function Complete.Run(root: string)
 	assert(Runtime.Environment("KERO_HEAP_PREPARED") == "1", "run distribution/actions/kero-build.sh instead of invoking the Luau controller directly")
 	Runtime.WriteDirectory(root .. "/.heap")
-	Runtime.WriteDirectory(root .. "/.heap/logs")
-	Runtime.StartRunLog(root .. "/.heap/logs/validate-locally.log")
+	Runtime.WriteDirectory(root .. "/.heap/cache/logs")
+	Runtime.StartRunLog(root .. "/.heap/cache/logs/validate-locally.log")
 	local configuration = Settings.Read(root)
 	local targets = enabledTargets(configuration)
 	local jobs = { "source validation", "portable workflow validation", "toolchain preflight", "host-tool preparation", "WASM build" }
@@ -313,7 +272,7 @@ function Complete.Run(root: string)
 	executeJob("source validation", "source-validation", 1, function()
 		sourceChecks(root)
 	end)
-	executeJob("portable workflow validation", "portable-workflow", 4, function()
+	executeJob("portable workflow validation", "portable-workflow", 2, function()
 		portableChecks(root)
 	end)
 	executeJob("toolchain preflight", "toolchain-preflight", 2, function()
@@ -337,9 +296,9 @@ function Complete.Run(root: string)
 	executeJob("WASM build", "wasm-build", 1, function()
 		Runtime.Step("WASM build", "Compiling", "shared kero-core")
 		local wslRoot = Runtime.Environment("KERO_WSL_WORK_ROOT")
-		local cargoTarget = if wslRoot then wslRoot .. "/build/cargo/wasm" else root .. "/.heap/build/cargo/wasm"
+		local cargoTarget = if wslRoot then wslRoot .. "/build/cargo/wasm" else root .. "/.heap/cache/build/cargo/wasm"
 		local cargo = "CARGO_TARGET_DIR=" .. Runtime.Quote(cargoTarget) .. " cargo"
-		local destination = root .. "/.heap/build/cargo/wasm/wasm32-wasip1/release"
+		local destination = root .. "/.heap/cache/build/cargo/wasm/wasm32-wasip1/release"
 		local manifest = if wslRoot then wslRoot .. "/build/source/src/Cargo.toml" else root .. "/src/Cargo.toml"
 		run(root, "rustup target add wasm32-wasip1 && " .. cargo .. " build --manifest-path " .. Runtime.Quote(manifest) .. " --release -p kero-core --target wasm32-wasip1"
 			.. " && mkdir -p " .. Runtime.Quote(destination) .. " && cp -f "
@@ -371,7 +330,7 @@ function Complete.Run(root: string)
 			discardWorkingState(root)
 		end)
 		Publication.Finalize(publisher)
-		Runtime.Finish("[ok] Validation produced every enabled artifact under .heap/artifacts/.")
+		Runtime.Finish("[ok] Validation produced every enabled artifact under .heap/release/artifacts/.")
 		return
 	end
 
