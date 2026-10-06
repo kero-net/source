@@ -6,10 +6,14 @@ $versionMatch = Select-String -LiteralPath $manifest -Pattern '^version = "([^"]
 if (-not $versionMatch) { throw 'Windows Python version is missing from distribution/tools/python-windows.toml' }
 $version = $versionMatch.Matches[0].Groups[1].Value
 
-$architecture = switch ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) {
+$hostArchitecture = switch ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) {
     'Arm64' { 'windows-arm64' }
     'X64' { 'windows-x64' }
     default { throw "Unsupported Windows architecture: $([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)" }
+}
+$architecture = if ($env:KERO_WINDOWS_PYTHON_ARCH) { $env:KERO_WINDOWS_PYTHON_ARCH } else { $hostArchitecture }
+if ($architecture -notin @('windows-arm64', 'windows-x64')) {
+    throw "Unsupported requested Windows Python architecture: $architecture"
 }
 
 $section = $false
@@ -51,4 +55,4 @@ if ($env:GITHUB_PATH) {
     $scripts = Join-Path $runtime 'Scripts'
     if (Test-Path -LiteralPath $scripts) { Add-Content -LiteralPath $env:GITHUB_PATH -Value $scripts }
 }
-Write-Host "Using disposable Python $version from $runtime"
+Write-Host "Using disposable Python $version ($architecture) from $runtime on host $hostArchitecture"
