@@ -13,6 +13,22 @@ on:
           - codeql
           - stale
           - portable
+          - package
+      package-target:
+        description: Package target for the package repair task.
+        required: false
+        type: choice
+        default: windows-arm64
+        options:
+          - windows-arm64
+          - windows-x64
+          - linux-arm64
+          - linux-x64
+      source-sha:
+        description: Optional source commit for the package repair task. Defaults to the dispatched ref.
+        required: false
+        type: string
+        default: ''
       language:
         description: CodeQL language for the codeql task.
         required: false
@@ -450,3 +466,18 @@ jobs:
         uses: ./.github/actions/setup-lune
       - name: Run portable checks
         run: KERO_PORTABLE_WORKFLOW=1 lune run .github/scripts/distribution-portable.luau
+
+
+  package-repair:
+    name: Package Repair
+    if: github.event_name == 'workflow_dispatch' && inputs.task == 'package'
+    permissions:
+      actions: read
+      contents: read
+      checks: read
+      pull-requests: read
+    uses: ./.github/workflows/release.yml
+    with:
+      source-sha: ${{ inputs.source-sha || github.sha }}
+      package-target: ${{ inputs.package-target }}
+      publish: false
