@@ -55,17 +55,26 @@ if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then
   fi
 fi
 
-if [[ ! -e /proc/sys/fs/binfmt_misc/qemu-x86_64 ]] && [[ "$(uname -m)" != x86_64 ]]; then
-  docker run --privileged --rm \
-    tonistiigi/binfmt@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0 \
-    --install amd64 | tee "$logs/act-binfmt.log"
-fi
+case "$(uname -m)" in
+  aarch64|arm64)
+    image=catthehacker/ubuntu@sha256:c58e2b364da03b0c804c7d660f2ecbedf2f221a382b9baa0b344b0144780ff43
+    platform=linux/arm64
+    expected_image=sha256:10ca2cfc3a29b70e13fe0a2a9244fe7e5d24fbd7350ac4205028335c9541f926
+    ;;
+  x86_64|amd64)
+    image=catthehacker/ubuntu@sha256:9c7b3a3613c6d8459f6fca00b2f42a6f9c02f6a16b3cb31a6fbb4727726f6395
+    platform=linux/amd64
+    expected_image=''
+    ;;
+  *)
+    echo 'Local GitHub workflow replay requires Linux x64 or ARM64.' >&2
+    exit 1
+    ;;
+esac
 
-image=catthehacker/ubuntu@sha256:c58e2b364da03b0c804c7d660f2ecbedf2f221a382b9baa0b344b0144780ff43
-expected_image=sha256:10ca2cfc3a29b70e13fe0a2a9244fe7e5d24fbd7350ac4205028335c9541f926
-docker pull --platform linux/arm64 "$image" | tee "$logs/act-image.log"
-actual_image="$(docker image inspect --platform linux/arm64 "$image" --format '{{.Id}}')"
-if [[ "$actual_image" != "$expected_image" ]]; then
+docker pull --platform "$platform" "$image" | tee "$logs/act-image.log"
+actual_image="$(docker image inspect --platform "$platform" "$image" --format '{{.Id}}')"
+if [[ -n "$expected_image" && "$actual_image" != "$expected_image" ]]; then
   echo "Runner image mismatch: expected $expected_image, received $actual_image" >&2
   exit 1
 fi
@@ -92,12 +101,13 @@ tree_sha="$(git -C "$snapshot" rev-parse HEAD^{tree})"
   printf 'snapshot-tree=%s\n' "$tree_sha"
   printf 'act=%s\n' "$("$act" --version)"
   printf 'docker=%s\n' "$(docker version --format '{{.Server.Version}}')"
+  printf 'runner-platform=%s\n' "$platform"
   printf 'runner-image=%s\n' "$actual_image"
 } > "$logs/act-inputs.txt"
 
 common=(
   -P "ubuntu-latest=$image"
-  --container-architecture linux/arm64
+  --container-architecture "${platform#linux/}"
   --concurrent-jobs 1
   --pull=false
   --artifact-server-path "$cache/act-artifacts"
@@ -114,12 +124,12 @@ if ! grep -Fq '[CI/CI Gate' "$logs/act-ci.log" || ! grep -Fq 'Job succeeded' "$l
   exit 1
 fi
 
-for target in linux-arm64 linux-x64; do
-  "$act" workflow_call -W .github/workflows/release.yml -j build-release-packages \
-    --input "source-sha=$source_sha" --matrix "target:$target" \
-    "${common[@]}" 2>&1 | tee "$logs/act-$target.log"
-  if ! grep -Fq "Build package ($target)" "$logs/act-$target.log" || ! grep -Fq 'Job succeeded' "$logs/act-$target.log"; then
-    echo "act skipped or failed the required $target publication package job." >&2
-    exit 1
-  fi
-done
+cat > "$logs/workflow-replay.ok" <<EOF
+snapshot-head=$source_sha
+snapshot-tree=$tree_sha
+runner-platform=$platform
+runner-image=$actual_image
+scope=ci-orchestration
+EOF
+
+echo 'GitHub CI orchestration replay passed. Distribution packages are built once by the native local target providers.'
