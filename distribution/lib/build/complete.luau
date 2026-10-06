@@ -73,7 +73,7 @@ local function portableChecks(root: string)
 	Contracts.Verify(root)
 	Runtime.StepComplete(job)
 	Runtime.Step(job, "Checking", "GitHub workflow replay completed")
-	assert(Runtime.Environment("KERO_ACT_VALIDATED") == "1", "run Kero: Validate Locally to execute required GitHub workflows before building")
+	assert(Runtime.Environment("KERO_WORKFLOW_REPLAY") == "1", "run Kero: Validate Locally to execute required GitHub workflows before building")
 	Runtime.StepComplete(job)
 end
 
