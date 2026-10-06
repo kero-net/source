@@ -15,15 +15,42 @@ if ($LASTEXITCODE -ne 0 -or -not $wslWorkspace) {
 }
 
 $previousClean = $env:KERO_CLEAN
-$previousActValidated = $env:KERO_ACT_VALIDATED
+$previousReplay = $env:KERO_WORKFLOW_REPLAY
 $previousWslenv = $env:WSLENV
 try {
     $env:KERO_CLEAN = '0'
     & wsl.exe --exec /bin/bash --noprofile --norc "$wslWorkspace/distribution/actions/validate-act.sh"
     if ($LASTEXITCODE -ne 0) { throw "GitHub workflow replay failed with exit code $LASTEXITCODE." }
 
-    $env:KERO_ACT_VALIDATED = '1'
-    $env:WSLENV = (@($env:WSLENV, 'KERO_ACT_VALIDATED') | Where-Object { $_ }) -join ':'
+    $marker = Join-Path $heap 'cache/logs/workflow-replay.ok'
+    if (-not (Test-Path -LiteralPath $marker)) {
+        throw 'GitHub workflow replay did not leave its success marker.'
+    }
+
+    $markerValues = @{}
+    foreach ($line in (Get-Content -LiteralPath $marker)) {
+        if ($line -match '^([^=]+)=(.*)$') { $markerValues[$Matches[1]] = $Matches[2] }
+    }
+    $tracked = (& git -C $workspace ls-files --cached --others --exclude-standard)
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot enumerate the validation source snapshot.' }
+    $treeInput = Join-Path $heap 'cache/source-tree-check'
+    if (Test-Path -LiteralPath $treeInput) { Remove-Item -LiteralPath $treeInput -Recurse -Force }
+    New-Item -ItemType Directory -Path $treeInput -Force | Out-Null
+    & git -C $workspace ls-files --cached --others --exclude-standard -z |
+        & tar --null --ignore-failed-read -T - -cf - |
+        & tar -xf - -C $treeInput
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot materialize the validation source snapshot.' }
+    & git -C $treeInput init --initial-branch=source -q
+    & git -C $treeInput add -A
+    & git -C $treeInput -c user.name='KERO local validation' -c user.email='validation@localhost' commit -qm 'Validate current source snapshot'
+    $currentTree = (& git -C $treeInput rev-parse HEAD^{tree}).Trim()
+    Remove-Item -LiteralPath $treeInput -Recurse -Force
+    if ($markerValues['snapshot-tree'] -ne $currentTree) {
+        throw 'Source changed after GitHub workflow replay; rerun local validation.'
+    }
+
+    $env:KERO_WORKFLOW_REPLAY = '1'
+    $env:WSLENV = (@($env:WSLENV, 'KERO_WORKFLOW_REPLAY') | Where-Object { $_ }) -join ':'
     & (Join-Path $PSScriptRoot 'kero-build.ps1')
     if ($LASTEXITCODE -ne 0) { throw "Native distribution build failed with exit code $LASTEXITCODE." }
 
@@ -54,6 +81,6 @@ try {
 }
 finally {
     $env:KERO_CLEAN = $previousClean
-    $env:KERO_ACT_VALIDATED = $previousActValidated
+    $env:KERO_WORKFLOW_REPLAY = $previousReplay
     $env:WSLENV = $previousWslenv
 }
