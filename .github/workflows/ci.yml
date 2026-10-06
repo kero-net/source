@@ -2,10 +2,51 @@ name: CI
 
 on:
   workflow_dispatch:
+    inputs:
+      task:
+        description: CI task to run.
+        required: true
+        type: choice
+        default: ci
+        options:
+          - ci
+          - codeql
+          - stale
+          - portable
+          - package
+      package-target:
+        description: Package target for the package repair task.
+        required: false
+        type: choice
+        default: windows-arm64
+        options:
+          - windows-arm64
+          - windows-x64
+          - linux-arm64
+          - linux-x64
+      source-sha:
+        description: Optional source commit for the package repair task. Defaults to the dispatched ref.
+        required: false
+        type: string
+        default: ''
+      language:
+        description: CodeQL language for the codeql task.
+        required: false
+        type: choice
+        default: rust
+        options:
+          - rust
   pull_request:
     branches: [source]
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    branches: [source]
+  issues:
+    types: [opened]
   push:
     branches: [source]
+  schedule:
+    - cron: "37 7 * * 1"
 
 permissions:
   contents: read
@@ -16,6 +57,7 @@ env:
 jobs:
   repository-contracts:
     name: Repository Contracts
+    if: github.event_name == 'push' || github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.task == 'ci')
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
@@ -138,6 +180,14 @@ jobs:
         with:
           name: ci-pages
           path: ${{ runner.temp }}/kero-pages
+      - name: Configure Pages
+        if: github.event_name == 'push' && github.ref_name == 'source'
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - name: Upload Pages deployment artifact
+        if: github.event_name == 'push' && github.ref_name == 'source'
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: ${{ runner.temp }}/kero-pages
 
   build-repository:
     name: Build Repository
@@ -208,7 +258,7 @@ jobs:
 
   ci-gate:
     name: CI Gate
-    if: always()
+    if: always() && (github.event_name == 'push' || github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.task == 'ci'))
     needs:
       - repository-contracts
       - rust
@@ -246,7 +296,7 @@ jobs:
 
   publication-decision:
     name: Publication Decision
-    if: always()
+    if: always() && (github.event_name == 'push' || github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.task == 'ci'))
     needs: ci-gate
     runs-on: ubuntu-latest
     outputs:
@@ -274,3 +324,160 @@ jobs:
     uses: ./.github/workflows/release.yml
     with:
       source-sha: ${{ github.sha }}
+
+
+  pages-deploy:
+    name: Pages
+    if: github.event_name == 'push' && github.ref_name == 'source'
+    needs: build-pages
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+  pull-request-labeler:
+    name: Pull Request Labeler
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Label changed paths
+        uses: actions/labeler@bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13 # v7.0.0
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+  first-issue:
+    name: First Interaction (Issue)
+    if: github.event_name == 'issues'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Welcome first-time issue reporters
+        uses: actions/first-interaction@1c4688942c71f71d4f5502a26ea67c331730fa4d # v3
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          issue_message: Thanks for opening your first issue. A maintainer will review the reproduction and ownership boundary.
+          pr_message: unused
+
+  first-pull-request:
+    name: First Interaction (Pull Request)
+    if: github.event_name == 'pull_request_target' && github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: read
+    steps:
+      - name: Welcome first-time pull-request contributors
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const pullRequest = context.payload.pull_request;
+            const priorPullRequests = await github.paginate(github.rest.pulls.list, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              per_page: 100,
+            });
+            const hasPriorPullRequest = priorPullRequests.some((candidate) =>
+              candidate.number < pullRequest.number
+              && candidate.user?.login === pullRequest.user.login,
+            );
+            if (hasPriorPullRequest) {
+              core.info(`Skipping welcome for ${pullRequest.user.login}; a prior pull request exists.`);
+              return;
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pullRequest.number,
+              body: 'Thanks for your first pull request. Please confirm the target is `source` and include exact validation results.',
+            });
+
+  stale:
+    name: Stale Discussions and Issues
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.task == 'stale')
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Mark inactive work
+        uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v11.0.0
+        with:
+          days-before-stale: 60
+          days-before-close: 14
+          exempt-issue-labels: pinned,security,roadmap
+          exempt-pr-labels: pinned,security,release
+          stale-issue-message: This issue has been inactive for 60 days. Add current evidence or context to keep it open.
+          close-issue-message: Closing after the stale review window. It can be reopened when new evidence is available.
+          stale-pr-message: This pull request has been inactive for 60 days. Rebase and add current validation when work resumes.
+          close-pr-message: Closing after the stale review window. Open a new pull request from current `source` when work resumes.
+
+  codeql:
+    name: CodeQL
+    if: github.event_name == 'workflow_dispatch' && inputs.task == 'codeql'
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      packages: read
+      contents: read
+    steps:
+      - name: Require source workflow ref
+        shell: bash
+        run: |
+          if [ "$GITHUB_REF_NAME" != "source" ]; then
+            echo "CodeQL must be dispatched from source, got $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: source
+          persist-credentials: false
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          languages: ${{ inputs.language }}
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+      - name: Analyze
+        uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+
+  portable:
+    name: Local Distribution Portable Checks
+    if: github.event_name == 'workflow_dispatch' && inputs.task == 'portable'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Lune
+        uses: ./.github/actions/setup-lune
+      - name: Run portable checks
+        run: KERO_PORTABLE_WORKFLOW=1 lune run .github/scripts/distribution-portable.luau
+
+
+  package-repair:
+    name: Package Repair
+    if: github.event_name == 'workflow_dispatch' && inputs.task == 'package'
+    permissions:
+      actions: read
+      contents: read
+      checks: read
+      pull-requests: read
+    uses: ./.github/workflows/release.yml
+    with:
+      source-sha: ${{ inputs.source-sha || github.sha }}
+      package-target: ${{ inputs.package-target }}
+      publish: false

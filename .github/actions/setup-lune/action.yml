@@ -4,16 +4,14 @@ runs:
   using: composite
   steps:
     - name: Install Lune
+      if: runner.os != 'Windows'
       shell: bash
       env:
         KERO_LUNE_OS: ${{ runner.os }}
-        KERO_LUNE_ARCH: ${{ runner.os == 'Windows' && runner.arch || '' }}
       run: |
-        action_path="$GITHUB_ACTION_PATH"
-        destination="$RUNNER_TEMP/kero-lune"
-        if [[ "$RUNNER_OS" == Windows ]]; then
-          action_path="$(cygpath -u "$GITHUB_ACTION_PATH")"
-          destination="$(cygpath -u "$RUNNER_TEMP")/kero-lune"
-        fi
-        bash "$action_path/../../../distribution/actions/install-lune.sh" "$destination"
+        bash "$GITHUB_ACTION_PATH/../../../distribution/actions/install-lune.sh" "$RUNNER_TEMP/kero-lune"
         echo "$RUNNER_TEMP/kero-lune" >> "$GITHUB_PATH"
+    - name: Install Lune on Windows
+      if: runner.os == 'Windows'
+      shell: powershell
+      run: '& "$env:GITHUB_ACTION_PATH/../../../distribution/actions/install-lune-windows.ps1"'
