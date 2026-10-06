@@ -158,8 +158,10 @@ jobs:
         with:
           ref: ${{ inputs.source-sha }}
           persist-credentials: false
-      - name: Install WASM core target
-        run: rustup target add wasm32-wasip1
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          targets: wasm32-wasip1
       - name: Build shared WASM core
         shell: bash
         run: |
@@ -200,8 +202,10 @@ jobs:
         if: runner.os == 'Windows' && needs.validate-release-key.outputs.signing == 'true'
         shell: cmd
         run: choco install gnupg --yes --no-progress
-      - name: Install WASM core target
-        run: rustup target add wasm32-wasip1
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          targets: wasm32-wasip1,${{ matrix.rust_target }}
       - name: Set up Lune
         uses: ./.github/actions/setup-lune
       - name: Set up MSVC
